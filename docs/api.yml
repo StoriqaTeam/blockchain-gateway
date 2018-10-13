@@ -1,0 +1,277 @@
+openapi: 3.0.0
+servers:
+  - url: 'https://dev.blockchain-gateway.stq.cloud/v1'
+  - url: 'http://dev.blockchain-gateway.stq.cloud/v1'
+  - url: 'https://blockchain-gateway.stq.cloud/v1'
+  - url: 'http://blockchain-gateway.stq.cloud/v1'
+info:
+  description: Interaction with blockchain
+  version: "0.1.0"
+  title: Blockchain gateway
+  contact:
+    email: a.karasev@storiqa.com
+tags:
+  - name: ethereum
+    description: Methods for working with ethereum and ERC20 tokens
+  - name: bitcoin
+    description: Methods for working with bitcoin
+paths:
+  /bitcoin/transactions/raw:
+    post:
+      summary: Post transaction to bitcoin blockchain
+      tags:
+        - bitcoin
+      responses:
+        204:
+          description: Ok
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreateInput'
+  /bitcoin/{address}/utxos/:
+    get:
+      summary: Get utxos for address
+      description: This parameter is required by `keystore` service to sign transaction
+      tags:
+        - bitcoin
+      parameters:
+        - $ref: '#/components/parameters/BitcoinAddressParam'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utxo'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+  /ethereum/transactions/raw:
+    post:
+      summary: Post transaction to ethereum blockchain (ether + ERC20)
+      tags:
+        - ethereum
+      responses:
+        204:
+          description: Ok
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TransactionCreateInput'
+  /ethereum/{address}/nonce/:
+    get:
+      summary: Get nonce for address
+      description: This parameter is required by `keystore` service to sign transaction
+      tags:
+        - ethereum
+      parameters:
+        - $ref: '#/components/parameters/EthereumAddressParam'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Utxo'
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+
+components:
+  responses:
+    NotFound:
+      description: Resource not found
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error that comes with 404 status
+            properties:
+              code:
+                type: string
+                example: 404
+
+              description:
+                type: string
+                example: Not found
+
+    BadRequest:
+      description: Most likely malformed json (this includes violating schema in terms of required fields, but not validations)
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error that comes with 400 status
+            properties:
+
+              description:
+                type: string
+                example: Bad request
+    Unauthorized:
+      description: Unauthorized to perform action
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error that comes with 401 status
+            properties:
+
+              description:
+                type: string
+                example: Unauthorized
+    UnprocessableEntity:
+      description: Json object matched schema, but didn't pass validations
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ValidationErrors'
+    Internal:
+      description: Internal server error
+      content:
+        application/json:
+          schema:
+            type: object
+            description: Error that comes with 500 status
+            properties:
+              description:
+                type: string
+                example: Internal server error
+  schemas:
+    ValidationErrors:
+      type: array
+      items:
+        type: object
+        properties:
+          email:
+            type: array
+            description: Field name
+            items:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Validator name
+                  example: email
+                message:
+                  type: string
+                  description: Validation message
+                  example: Invalid email format
+          password:
+            type: array
+            description: Field name
+            items:
+              type: object
+              properties:
+                code:
+                  type: string
+                  description: Validator name
+                  example: length
+                message:
+                  type: string
+                  description: Validation message
+                  example: Length must be greater than 8
+            example:
+              -
+                code: length
+                message: Length must be greater than 8
+              -
+                code: length
+                message: Length must be less than 16
+
+    TransactionCreateInput:
+      type: object
+      required:
+        - raw
+      properties:
+        raw:
+          $ref: '#/components/schemas/RawTransaction'
+
+    Utxo:
+      type: object
+      properties:
+        txHash:
+          type: string
+          description: Transaction hash of UTXO
+          example: "709ea8df7a09edf780adf78a0a"
+        index:
+          type: integer
+          description: Number of UTXO in outputs of transaction
+          example: 2
+        value:
+          type: integer
+          description: total value in satothis available in UTXO
+          example: 82000000
+    RawTransaction:
+      type: string
+      description: Hex string data that fits 1 to 1 for node api. It must be fetched from `keystore` service.
+      example: "6a4d76f7ad95f6ad94fa796d4"
+    Currency:
+      type: string
+      description: Coinmarketcap symbol in lowercase [source](https://coinmarketcap.com/)
+      example: eth
+    Uuid:
+      type: string
+      description: Uuid v4
+      example: '5188dde0-9dc3-461f-b272-dd3b1398c1dc'
+    EthereumAddress:
+      type: string
+      description: Wallet address on ethereum in hexademical format, __no__ 0x prefix.
+      example: '89595fa59d69d696d9d96'
+    BitcoinAddress:
+      type: string
+      description: Wallet address on bitcoin in base58 format.
+      example: '5jsfkls7dfsdflj'
+  securitySchemes:
+    Bearer:
+      type: apiKey
+      name: Authorization
+      in: header
+  parameters:
+    BitcoinAddressParam:
+      name: address
+      in: path
+      description: address in bitcoin network
+      required: true
+      schema:
+        $ref: '#/components/schemas/BitcoinAddress'
+    EthereumAddressParam:
+      name: address
+      in: path
+      description: address in ethereum network
+      required: true
+      schema:
+        $ref: '#/components/schemas/EthereumAddress'
+    offsetParam:
+      in: query
+      name: offset
+      required: true
+      schema:
+        type: integer
+      description: The number of items to skip before starting to collect the result set.
+    limitParam:
+      in: query
+      name: limit
+      required: true
+      description: The number of items to return
+      schema:
+        type: integer

@@ -1,0 +1,9 @@
+name: blockchain-gateway
+version: "0.1.0"
+author: "Alexey Karasev <karasev.alexey@gmail.com>"
+about: mocroservice that interacts with blockchain
+subcommands:
+    - config:
+        about: Prints current config
+    - server:
+        about: Starts server

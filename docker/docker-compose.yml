@@ -1,0 +1,38 @@
+version: "3"
+
+volumes:
+  bundle-cache:
+  blockchain-gateway-postgres-data:
+networks:
+  blockchain-gateway:
+
+services:
+  blockchain-gateway:
+    build: .
+    image: blockchain-gateway
+    command: ["bash", "-c", "rm tmp/pids/server.pid; bundle; bundle exec rails s"]
+    environment:
+      - DATABASE_URL=postgres://blockchain-gateway:blockchain-gateway@db/blockchain-gateway
+    volumes:
+      - ..:/app
+      - bundle-cache:/usr/local/bundle
+    ports:
+      - 3000:3000
+    networks:
+      - blockchain-gateway
+    depends_on:
+      - db
+
+  db:
+    image: postgres:9.6.1
+    environment:
+      - POSTGRES_USER=blockchain-gateway
+      - POSTGRES_PASSWORD=blockchain-gateway
+      - POSTGRES_DB=blockchain-gateway
+    volumes:
+      - blockchain-gateway-postgres-data:/var/lib/postgresql/data
+      - .:/app
+    networks:
+      - blockchain-gateway
+    ports:
+      - 5432:5432
