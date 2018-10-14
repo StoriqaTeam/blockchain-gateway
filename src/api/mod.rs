@@ -25,19 +25,14 @@ use r2d2;
 
 use self::controllers::*;
 use self::error::*;
-use blockchain::BlockchainServiceImpl;
 use models::*;
 use prelude::*;
-use repos::{DbExecutorImpl, KeysRepoImpl, UsersRepoImpl};
 use serde_json;
-use services::{AuthServiceImpl, KeysServiceImpl, TransactionsServiceImpl};
 
 #[derive(Clone)]
 pub struct ApiService {
     server_address: SocketAddr,
     config: Config,
-    db_pool: PgPool,
-    cpu_pool: CpuPool,
 }
 
 impl ApiService {
@@ -51,19 +46,9 @@ impl ApiService {
                 config.server.host,
                 config.server.port
             ))?;
-        let database_url = config.database.url.clone();
-        let manager = ConnectionManager::<PgConnection>::new(database_url.clone());
-        let db_pool = r2d2::Pool::builder().build(manager).map_err(ectx!(try
-            ErrorContext::Config,
-            ErrorKind::Internal =>
-            database_url
-        ))?;
-        let cpu_pool = CpuPool::new(config.database.thread_pool_size);
         Ok(ApiService {
             config: config.clone(),
             server_address,
-            db_pool,
-            cpu_pool,
         })
     }
 }
@@ -76,18 +61,14 @@ impl Service for ApiService {
 
     fn call(&mut self, req: Request<Body>) -> Self::Future {
         let (parts, http_body) = req.into_parts();
-        let db_pool = self.db_pool.clone();
-        let thread_pool = self.cpu_pool.clone();
-        let db_executor = DbExecutorImpl::new(db_pool.clone(), thread_pool.clone());
         let config = self.config.clone();
         Box::new(
             read_body(http_body)
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal))
                 .and_then(move |body| {
                     let router = router! {
-                        GET /v1/users/{user_id: UserId}/keys => get_keys,
-                        POST /v1/users/{user_id: UserId}/keys => post_keys,
-                        POST /v1/transactions => post_transactions,
+                        GET /v1/bitcoin/{address: BitcoinAddress}/utxos/ => get_utxos,
+                        POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
                         _ => not_found,
                     };
 

@@ -3,8 +3,6 @@
 #[macro_use]
 extern crate failure;
 #[macro_use]
-extern crate diesel;
-#[macro_use]
 extern crate serde_derive;
 #[macro_use]
 extern crate lazy_static;
@@ -20,7 +18,6 @@ extern crate sentry;
 extern crate base64;
 extern crate config as config_crate;
 extern crate futures;
-extern crate futures_cpupool;
 extern crate hyper;
 extern crate hyper_tls;
 extern crate r2d2;
@@ -41,17 +38,10 @@ mod api;
 mod config;
 mod models;
 mod prelude;
-mod schema;
 mod sentry_integration;
 mod services;
 mod utils;
 
-use diesel::pg::PgConnection;
-use diesel::r2d2::ConnectionManager;
-use futures_cpupool::CpuPool;
-
-use self::prelude::*;
-use self::repos::{DbExecutor, DbExecutorImpl, Error as ReposError, UsersRepo, UsersRepoImpl};
 use config::Config;
 
 pub fn print_config() {
