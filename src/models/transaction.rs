@@ -2,6 +2,10 @@
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct BitcoinTransaction(String);
 
-/// Base58 encoded ethereum transaction
+/// Hex encoded ethereum transaction
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct EthereumTransaction(String);
+
+/// Hex encoded hash of a transaction
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
+pub struct TxHash(String);

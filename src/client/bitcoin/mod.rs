@@ -16,6 +16,7 @@ use utils::read_body;
 
 pub trait BitcoinClient: Send + Sync + 'static {
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
+    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -61,4 +62,6 @@ impl BitcoinClient for BitcoinClientImpl {
                 }).map(|resp| resp.unspent_outputs.into_iter().map(From::from).collect()),
         )
     }
+
+    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {}
 }
