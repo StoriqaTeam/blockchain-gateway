@@ -6,7 +6,7 @@ use std::sync::Arc;
 use hyper::{Body, Request};
 
 use self::error::*;
-use self::responses::UtxosResponse;
+use self::responses::*;
 use super::HttpClient;
 use config::Mode;
 use models::*;
@@ -63,5 +63,34 @@ impl BitcoinClient for BitcoinClientImpl {
         )
     }
 
-    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {}
+    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
+        let tx_clone = tx.clone();
+        let tx_clone2 = tx.clone();
+        let http_client = self.http_client.clone();
+        let uri_net_name = match self.mode {
+            Mode::Production => "main",
+            _ => "test3",
+        };
+        let body = Body::from(format!(r#"{{"tx": {}}}"#, tx));
+
+        Box::new(
+            Request::builder()
+                .method("POST")
+                .uri(format!(
+                    "https://api.blockcypher.com/v1/btc/{}/txs/push?token={}",
+                    uri_net_name, self.blockcypher_token
+                )).body(body)
+                .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => tx_clone2))
+                .into_future()
+                .and_then(move |request| http_client.request(request).map_err(ectx!(ErrorKind::Internal => tx_clone)))
+                .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => tx)))
+                .and_then(|bytes| {
+                    let bytes_clone = bytes.clone();
+                    String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
+                }).and_then(|string| {
+                    serde_json::from_str::<PostTransactionsResponse>(&string)
+                        .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
+                }).map(|resp| resp.hash),
+        )
+    }
 }

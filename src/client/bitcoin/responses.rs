@@ -12,6 +12,11 @@ pub struct UtxoResponse {
     pub value: Amount,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct PostTransactionsResponse {
+    pub hash: TxHash,
+}
+
 impl From<UtxoResponse> for Utxo {
     fn from(u: UtxoResponse) -> Self {
         Utxo {
