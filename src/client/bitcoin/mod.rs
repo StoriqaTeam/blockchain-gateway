@@ -13,18 +13,27 @@ use prelude::*;
 use serde_json;
 use utils::read_body;
 
-pub trait BitcoinClient {
-    fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error>>;
+pub trait BitcoinClient: Send + Sync + 'static {
+    fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
-struct BitcoinClientImpl {
+pub struct BitcoinClientImpl {
     http_client: Arc<HttpClient>,
     blockcypher_token: String,
 }
 
+impl BitcoinClientImpl {
+    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String) -> Self {
+        Self {
+            http_client,
+            blockcypher_token,
+        }
+    }
+}
+
 impl BitcoinClient for BitcoinClientImpl {
-    fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error>> {
+    fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();

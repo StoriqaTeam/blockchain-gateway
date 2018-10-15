@@ -6,6 +6,7 @@ use hyper::{header::HeaderValue, header::AUTHORIZATION, Body, HeaderMap, Method,
 
 use super::error::*;
 use models::*;
+use services::BitcoinService;
 
 mod bitcoin;
 mod fallback;
@@ -21,6 +22,7 @@ pub struct Context {
     pub method: Method,
     pub uri: Uri,
     pub headers: HeaderMap<HeaderValue>,
+    pub bitcoin_service: Arc<BitcoinService>,
 }
 
 impl Display for Context {

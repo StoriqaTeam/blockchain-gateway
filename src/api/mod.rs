@@ -1,6 +1,7 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
+use client::HttpClientImpl;
 use failure::{Compat, Fail};
 use futures::future;
 use futures::prelude::*;
@@ -10,6 +11,8 @@ use hyper::{service::Service, Body, Request, Response};
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
+use client::BitcoinClientImpl;
+use services::BitcoinServiceImpl;
 use utils::read_body;
 
 mod controllers;
@@ -67,11 +70,16 @@ impl Service for ApiService {
                         _ => not_found,
                     };
 
+                    let http_client = Arc::new(HttpClientImpl::new(&config));
+                    let bitcoin_client = Arc::new(BitcoinClientImpl::new(http_client.clone(), config.client.blockcypher_token.clone()));
+                    let bitcoin_service = Arc::new(BitcoinServiceImpl::new(bitcoin_client));
+
                     let ctx = Context {
                         body,
                         method: parts.method.clone(),
                         uri: parts.uri.clone(),
                         headers: parts.headers,
+                        bitcoin_service,
                     };
 
                     debug!("Received request {}", ctx);

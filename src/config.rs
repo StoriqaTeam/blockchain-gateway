@@ -30,6 +30,7 @@ pub struct Database {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub dns_threads: usize,
+    pub blockcypher_token: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
