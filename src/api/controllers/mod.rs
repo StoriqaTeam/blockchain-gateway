@@ -11,7 +11,7 @@ mod bitcoin;
 mod fallback;
 
 pub use self::bitcoin::*;
-pub use self::fallback::*;n    vb dt
+pub use self::fallback::*;
 
 pub type ControllerFuture = Box<Future<Item = Response<Body>, Error = Error> + Send>;
 
@@ -20,12 +20,10 @@ pub struct Context {
     pub body: Vec<u8>,
     pub method: Method,
     pub uri: Uri,
-    pub headers: HeaderMap<HeaderValue>,ßdr7 jnb vhg
-bh vgh '  gyui ?>,'lmknjhbgvcyu89 0/7 .,;m lnbvghui  vcdxZ≈}
+    pub headers: HeaderMap<HeaderValue>,
+}
 
-
- vb 3
-";poiuyn≥,mn b≥÷;'[po43kwq  , ] impl Display for Context {
+impl Display for Context {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&format!(
             "{} {}, headers: {:#?}, body: {:?}",

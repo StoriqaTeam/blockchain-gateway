@@ -20,7 +20,6 @@ extern crate config as config_crate;
 extern crate futures;
 extern crate hyper;
 extern crate hyper_tls;
-extern crate r2d2;
 extern crate rand;
 extern crate regex;
 extern crate rlp;

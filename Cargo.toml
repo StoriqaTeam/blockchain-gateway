@@ -19,7 +19,6 @@ hyper-tls = "0.3"
 lazy_static = "1.1.0"
 uuid = { version = "0.6", features = ["use_std", "v4", "serde"] }
 log = "0.4"
-r2d2 = "0.8.1"
 sentry = "0.12"
 serde = "1"
 serde_derive = "1"

@@ -1,12 +1,9 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use diesel::pg::PgConnection;
-use diesel::r2d2::ConnectionManager;
 use failure::{Compat, Fail};
 use futures::future;
 use futures::prelude::*;
-use futures_cpupool::CpuPool;
 use hyper;
 use hyper::Server;
 use hyper::{service::Service, Body, Request, Response};
@@ -20,8 +17,6 @@ mod error;
 mod requests;
 mod responses;
 mod utils;
-
-use r2d2;
 
 use self::controllers::*;
 use self::error::*;
@@ -67,41 +62,16 @@ impl Service for ApiService {
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal))
                 .and_then(move |body| {
                     let router = router! {
-                        GET /v1/bitcoin/{address: BitcoinAddress}/utxos/ => get_utxos,
+                        GET /v1/bitcoin/{address: BitcoinAddress}/utxos => get_utxos,
                         POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
                         _ => not_found,
                     };
-
-                    let auth_service = Arc::new(AuthServiceImpl::new(Arc::new(UsersRepoImpl), db_executor.clone()));
-                    let blockchain_service = Arc::new(BlockchainServiceImpl::new(
-                        config.blockchain.stq_gas_limit.clone(),
-                        config.blockchain.stq_contract_address.clone(),
-                        config.blockchain.stq_transfer_method_number.clone(),
-                        config.blockchain.ethereum_chain_id.clone(),
-                        config.blockchain.btc_network.clone(),
-                    ));
-                    let keys_repo = Arc::new(KeysRepoImpl);
-                    let keys_service = Arc::new(KeysServiceImpl::new(
-                        auth_service.clone(),
-                        blockchain_service.clone(),
-                        keys_repo.clone(),
-                        db_executor.clone(),
-                    ));
-
-                    let transactions_service = Arc::new(TransactionsServiceImpl::new(
-                        auth_service.clone(),
-                        keys_repo.clone(),
-                        blockchain_service.clone(),
-                        db_executor.clone(),
-                    ));
 
                     let ctx = Context {
                         body,
                         method: parts.method.clone(),
                         uri: parts.uri.clone(),
                         headers: parts.headers,
-                        keys_service,
-                        transactions_service,
                     };
 
                     debug!("Received request {}", ctx);

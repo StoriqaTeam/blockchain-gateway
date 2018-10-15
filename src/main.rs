@@ -13,9 +13,9 @@ fn main() {
     let matches = app.clone().get_matches();
 
     if let Some(_) = matches.subcommand_matches("config") {
-        keystore_lib::print_config();
+        blockchain_gateway_lib::print_config();
     } else if let Some(_) = matches.subcommand_matches("server") {
-        keystore_lib::start_server();
+        blockchain_gateway_lib::start_server();
     } else {
         let _ = app.print_help();
         println!("\n")
