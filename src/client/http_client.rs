@@ -72,7 +72,7 @@ impl HttpClient for HttpClientImpl {
                     400 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadRequest)),
                     401 => Err(ectx!(err ErrorSource::Server, ErrorKind::Unauthorized)),
                     404 => Err(ectx!(err ErrorSource::Server, ErrorKind::NotFound)),
-                    500 => Err(ectx!(err ErrorSource::Server, ErrorKind::Internal)),
+                    500 => Err(ectx!(err ErrorSource::Server, ErrorKind::InternalServer)),
                     502 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadGateway)),
                     504 => Err(ectx!(err ErrorSource::Server, ErrorKind::GatewayTimeout)),
                     _ => Err(ectx!(err ErrorSource::Server, ErrorKind::UnknownServerError)),

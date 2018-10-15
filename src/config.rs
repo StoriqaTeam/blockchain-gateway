@@ -31,6 +31,8 @@ pub struct Database {
 pub struct Client {
     pub dns_threads: usize,
     pub blockcypher_token: String,
+    pub infura_key: String,
+    pub infura_secret: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
