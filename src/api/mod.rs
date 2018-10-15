@@ -11,8 +11,8 @@ use hyper::{service::Service, Body, Request, Response};
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
-use client::BitcoinClientImpl;
-use services::BitcoinServiceImpl;
+use client::{BitcoinClientImpl, EthereumClientImpl};
+use services::{BitcoinServiceImpl, EthereumServiceImpl};
 use utils::read_body;
 
 mod controllers;
@@ -67,6 +67,8 @@ impl Service for ApiService {
                     let router = router! {
                         GET /v1/bitcoin/{address: BitcoinAddress}/utxos => get_utxos,
                         POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
+                        GET /v1/ethereum/{address: EthereumAddress}/nonce => get_nonce,
+                        POST /v1/ethereum/transactions/raw => post_ethereum_transactions,
                         _ => not_found,
                     };
 
@@ -76,7 +78,14 @@ impl Service for ApiService {
                         config.client.blockcypher_token.clone(),
                         config.mode.clone(),
                     ));
+                    let ethereum_client = Arc::new(EthereumClientImpl::new(
+                        http_client.clone(),
+                        config.mode.clone(),
+                        config.client.infura_key.clone(),
+                    ));
+
                     let bitcoin_service = Arc::new(BitcoinServiceImpl::new(bitcoin_client));
+                    let ethereum_service = Arc::new(EthereumServiceImpl::new(ethereum_client));
 
                     let ctx = Context {
                         body,
@@ -84,6 +93,7 @@ impl Service for ApiService {
                         uri: parts.uri.clone(),
                         headers: parts.headers,
                         bitcoin_service,
+                        ethereum_service,
                     };
 
                     debug!("Received request {}", ctx);

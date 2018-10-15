@@ -25,7 +25,7 @@ pub struct EthereumClientImpl {
 }
 
 impl EthereumClientImpl {
-    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String, mode: Mode, api_key: String) -> Self {
+    pub fn new(http_client: Arc<HttpClient>, mode: Mode, api_key: String) -> Self {
         let infura_url = match mode {
             Mode::Production => format!("https://mainnet.infura.io/{}", api_key),
             _ => format!("https://kovan.infura.io/{}", api_key),

@@ -22,8 +22,15 @@ paths:
       tags:
         - bitcoin
       responses:
-        204:
+        200:
           description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  txHash:
+                    $ref: '#/components/schemas/RawTransaction'
         400:
           $ref: '#/components/responses/BadRequest'
         500:
@@ -62,8 +69,15 @@ paths:
       tags:
         - ethereum
       responses:
-        204:
+        200:
           description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  txHash:
+                    $ref: '#/components/schemas/RawTransaction'
         400:
           $ref: '#/components/responses/BadRequest'
         500:
@@ -88,9 +102,12 @@ paths:
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Utxo'
+                type: object
+                properties:
+                  nonce:
+                    type: integer
+                    description: account nonce, required by `keystore` service
+                    example: 129
         400:
           $ref: '#/components/responses/BadRequest'
         500:

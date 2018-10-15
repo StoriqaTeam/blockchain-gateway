@@ -27,3 +27,10 @@ impl Display for EthereumAddress {
         f.write_str(&self.0)
     }
 }
+
+impl FromStr for EthereumAddress {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        Ok(EthereumAddress(s.to_string()))
+    }
+}

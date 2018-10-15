@@ -1,23 +1,26 @@
 use super::super::error::*;
 use super::super::requests::*;
-use super::super::responses::TxHashResponse;
+use super::super::responses::*;
 use super::super::utils::{parse_body, response_with_model};
 use super::Context;
 use super::ControllerFuture;
 use models::*;
 use prelude::*;
 
-pub fn get_utxos(ctx: &Context, address: BitcoinAddress) -> ControllerFuture {
+pub fn get_nonce(ctx: &Context, address: EthereumAddress) -> ControllerFuture {
     let address_clone = address.clone();
     Box::new(
-        ctx.bitcoin_service
-            .get_utxos(address)
+        ctx.ethereum_service
+            .get_nonce(address)
             .map_err(ectx!(convert => address_clone))
-            .and_then(|utxos| response_with_model(&utxos)),
+            .and_then(|nonce| {
+                let resp = NonceResponse { nonce };
+                response_with_model(&resp)
+            }),
     )
 }
 
-pub fn post_bitcoin_transactions(ctx: &Context) -> ControllerFuture {
+pub fn post_ethereum_transactions(ctx: &Context) -> ControllerFuture {
     let bitcoin_service = ctx.bitcoin_service.clone();
     let body = ctx.body.clone();
     Box::new(

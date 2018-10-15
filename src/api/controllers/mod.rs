@@ -6,12 +6,14 @@ use hyper::{header::HeaderValue, header::AUTHORIZATION, Body, HeaderMap, Method,
 
 use super::error::*;
 use models::*;
-use services::BitcoinService;
+use services::{BitcoinService, EthereumService};
 
 mod bitcoin;
+mod ethereum;
 mod fallback;
 
 pub use self::bitcoin::*;
+pub use self::ethereum::*;
 pub use self::fallback::*;
 
 pub type ControllerFuture = Box<Future<Item = Response<Body>, Error = Error> + Send>;
@@ -23,6 +25,7 @@ pub struct Context {
     pub uri: Uri,
     pub headers: HeaderMap<HeaderValue>,
     pub bitcoin_service: Arc<BitcoinService>,
+    pub ethereum_service: Arc<EthereumService>,
 }
 
 impl Display for Context {
