@@ -1,13 +1,12 @@
-mod error;
 mod responses;
 
 use std::sync::Arc;
 
 use hyper::{Body, Request};
 
-use self::error::*;
 use self::responses::*;
-use super::HttpClient;
+use super::error::*;
+use super::http_client::HttpClient;
 use config::Mode;
 use models::*;
 use prelude::*;
@@ -52,7 +51,7 @@ impl BitcoinClient for BitcoinClientImpl {
                 .body(Body::empty())
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => address_clone2))
                 .into_future()
-                .and_then(move |request| http_client.request(request).map_err(ectx!(ErrorKind::Internal => address_clone)))
+                .and_then(move |request| http_client.request(request))
                 .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => address)))
                 .and_then(|bytes| {
                     let bytes_clone = bytes.clone();
@@ -82,7 +81,7 @@ impl BitcoinClient for BitcoinClientImpl {
                 )).body(body)
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => tx_clone2))
                 .into_future()
-                .and_then(move |request| http_client.request(request).map_err(ectx!(ErrorKind::Internal => tx_clone)))
+                .and_then(move |request| http_client.request(request))
                 .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => tx)))
                 .and_then(|bytes| {
                     let bytes_clone = bytes.clone();

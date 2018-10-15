@@ -1,5 +1,3 @@
-mod error;
-
 use config::Config;
 use failure::Fail;
 use futures::future::Either;
@@ -9,7 +7,7 @@ use hyper::{client::HttpConnector, Body, Request, Response};
 use hyper_tls::HttpsConnector;
 use log::{self, Level};
 
-use self::error::*;
+use super::error::*;
 use utils::read_body;
 
 pub trait HttpClient: Send + Sync + 'static {
