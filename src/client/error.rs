@@ -37,6 +37,8 @@ pub enum ErrorContext {
     UTF8,
     #[fail(display = "http client error - converting to json struct from string")]
     Json,
+    #[fail(display = "http client error - parsing hex string")]
+    Hex,
 }
 
 #[allow(dead_code)]

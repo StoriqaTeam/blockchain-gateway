@@ -24,6 +24,7 @@ extern crate rand;
 extern crate regex;
 extern crate rlp;
 extern crate serde;
+#[macro_use]
 extern crate serde_json;
 extern crate serde_qs;
 #[cfg(test)]

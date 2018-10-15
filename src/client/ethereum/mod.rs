@@ -14,7 +14,7 @@ use serde_json;
 use utils::read_body;
 
 pub trait EthereumClient: Send + Sync + 'static {
-    fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
+    fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send>;
     fn send_raw_tx(&self, tx: EthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
 }
 
@@ -35,20 +35,19 @@ impl EthereumClientImpl {
 }
 
 impl EthereumClient for EthereumClientImpl {
-    fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {
+    fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send> {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
-        let address_raw = format!("{}", address);
         let request = json!({
             "method": "eth_getTransactionCount",
             "params": [address, "latest"]
-        })
+        }).to_string();
         Box::new(
             Request::builder()
-                .method("GET")
-                .uri(self.infura_url)
-                .body(Body::empty())
+                .method("POST")
+                .uri(self.infura_url.clone())
+                .body(Body::from(request))
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => address_clone2))
                 .into_future()
                 .and_then(move |request| http_client.request(request))
@@ -57,8 +56,10 @@ impl EthereumClient for EthereumClientImpl {
                     let bytes_clone = bytes.clone();
                     String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
                 }).and_then(|string| {
-                    serde_json::from_str::<nonceResponse>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
-                }).map(|resp| resp.unspent_outputs.into_iter().map(From::from).collect()),
+                    serde_json::from_str::<NonceResponse>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
+                }).and_then(|resp| {
+                    u64::from_str_radix(&resp.result, 16).map_err(ectx!(ErrorContext::Hex, ErrorKind::Internal => resp.result))
+                }),
         )
     }
 
@@ -66,19 +67,15 @@ impl EthereumClient for EthereumClientImpl {
         let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();
-        let uri_net_name = match self.mode {
-            Mode::Production => "main",
-            _ => "test3",
-        };
-        let body = Body::from(format!(r#"{{"tx": {}}}"#, tx));
-
+        let request = json!({
+            "method": "eth_sendRawTransaction",
+            "params": [tx]
+        }).to_string();
         Box::new(
             Request::builder()
                 .method("POST")
-                .uri(format!(
-                    "https://api.blockcypher.com/v1/btc/{}/txs/push?token={}",
-                    uri_net_name, self.blockcypher_token
-                )).body(body)
+                .uri(self.infura_url.clone())
+                .body(Body::from(request))
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => tx_clone2))
                 .into_future()
                 .and_then(move |request| http_client.request(request))
@@ -89,7 +86,7 @@ impl EthereumClient for EthereumClientImpl {
                 }).and_then(|string| {
                     serde_json::from_str::<PostTransactionsResponse>(&string)
                         .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
-                }).map(|resp| resp.hash),
+                }).map(|resp| resp.result),
         )
     }
 }
