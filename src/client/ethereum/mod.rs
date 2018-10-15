@@ -39,12 +39,17 @@ impl EthereumClient for EthereumClientImpl {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
+        let address_str = format!("0x{}", address);
         let request = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
             "method": "eth_getTransactionCount",
-            "params": [address, "latest"]
+            "params": [address_str, "latest"]
         }).to_string();
+        info!("Req: {}", request);
         Box::new(
             Request::builder()
+                .header("Content-Type", "application/json")
                 .method("POST")
                 .uri(self.infura_url.clone())
                 .body(Body::from(request))
@@ -58,7 +63,7 @@ impl EthereumClient for EthereumClientImpl {
                 }).and_then(|string| {
                     serde_json::from_str::<NonceResponse>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
                 }).and_then(|resp| {
-                    u64::from_str_radix(&resp.result, 16).map_err(ectx!(ErrorContext::Hex, ErrorKind::Internal => resp.result))
+                    u64::from_str_radix(&resp.result[2..], 16).map_err(ectx!(ErrorContext::Hex, ErrorKind::Internal => resp.result))
                 }),
         )
     }
@@ -67,9 +72,12 @@ impl EthereumClient for EthereumClientImpl {
         let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();
+        let tx_str = format!("0x{}", tx);
         let request = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
             "method": "eth_sendRawTransaction",
-            "params": [tx]
+            "params": [tx_str]
         }).to_string();
         Box::new(
             Request::builder()
