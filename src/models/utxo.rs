@@ -3,7 +3,7 @@ use super::Amount;
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct Utxo {
-    tx_hash: String,
-    index: usize,
-    value: Amount,
+    pub tx_hash: String,
+    pub index: usize,
+    pub value: Amount,
 }

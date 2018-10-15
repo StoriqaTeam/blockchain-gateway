@@ -34,6 +34,7 @@ extern crate validator;
 #[macro_use]
 mod macros;
 mod api;
+mod client;
 mod config;
 mod models;
 mod prelude;
