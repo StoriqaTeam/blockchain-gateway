@@ -71,7 +71,11 @@ impl Service for ApiService {
                     };
 
                     let http_client = Arc::new(HttpClientImpl::new(&config));
-                    let bitcoin_client = Arc::new(BitcoinClientImpl::new(http_client.clone(), config.client.blockcypher_token.clone()));
+                    let bitcoin_client = Arc::new(BitcoinClientImpl::new(
+                        http_client.clone(),
+                        config.client.blockcypher_token.clone(),
+                        config.mode.clone(),
+                    ));
                     let bitcoin_service = Arc::new(BitcoinServiceImpl::new(bitcoin_client));
 
                     let ctx = Context {

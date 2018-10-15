@@ -8,6 +8,7 @@ use hyper::{Body, Request};
 use self::error::*;
 use self::responses::UtxosResponse;
 use super::HttpClient;
+use config::Mode;
 use models::*;
 use prelude::*;
 use serde_json;
@@ -20,14 +21,16 @@ pub trait BitcoinClient: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct BitcoinClientImpl {
     http_client: Arc<HttpClient>,
+    mode: Mode,
     blockcypher_token: String,
 }
 
 impl BitcoinClientImpl {
-    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String) -> Self {
+    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String, mode: Mode) -> Self {
         Self {
             http_client,
             blockcypher_token,
+            mode,
         }
     }
 }
@@ -37,10 +40,14 @@ impl BitcoinClient for BitcoinClientImpl {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
+        let uri_base = match self.mode {
+            Mode::Production => "https://blockchain.info",
+            _ => "https://testnet.blockchain.info",
+        };
         Box::new(
             Request::builder()
                 .method("GET")
-                .uri(format!("https://blockchain.info/unspent?active={}", address))
+                .uri(format!("{}/unspent?active={}", uri_base, address))
                 .body(Body::empty())
                 .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => address_clone2))
                 .into_future()
