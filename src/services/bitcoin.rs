@@ -23,10 +23,12 @@ impl BitcoinServiceImpl {
 
 impl BitcoinService for BitcoinServiceImpl {
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {
-        Box::new(self.client.get_utxos(address).map_err(ectx!(ErrorKind::Internal)))
+        let address_clone = address.clone();
+        Box::new(self.client.get_utxos(address).map_err(ectx!(convert address_clone)))
     }
 
     fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
-        Box::new(self.client.send_raw_tx(tx).map_err(ectx!(ErrorKind::Internal)))
+        let tx_clone = tx.clone();
+        Box::new(self.client.send_raw_tx(tx).map_err(ectx!(convert tx_clone)))
     }
 }

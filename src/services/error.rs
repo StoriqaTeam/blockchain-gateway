@@ -1,6 +1,7 @@
 use std::fmt;
 use std::fmt::Display;
 
+use client::ErrorKind as ClientErrorKind;
 use failure::{Backtrace, Context, Fail};
 use validator::ValidationErrors;
 
@@ -45,3 +46,19 @@ pub enum ErrorContext {
 }
 
 derive_error_impls!();
+
+impl From<ClientErrorKind> for ErrorKind {
+    fn from(e: ClientErrorKind) -> ErrorKind {
+        match e {
+            ClientErrorKind::BadGateway => ErrorKind::Internal,
+            ClientErrorKind::BadRequest => ErrorKind::MalformedInput,
+            ClientErrorKind::GatewayTimeout => ErrorKind::Internal,
+            ClientErrorKind::Internal => ErrorKind::Internal,
+            ClientErrorKind::InternalServer => ErrorKind::Internal,
+            ClientErrorKind::NotFound => ErrorKind::NotFound,
+            ClientErrorKind::Unauthorized => ErrorKind::Unauthorized,
+            ClientErrorKind::UnknownServerError => ErrorKind::Internal,
+            ClientErrorKind::UnprocessableEntity => ErrorKind::MalformedInput,
+        }
+    }
+}
