@@ -15,15 +15,22 @@ use tokio::timer::timeout::Timeout;
 
 pub struct RabbitConnectionManager {
     client: Arc<Mutex<Client<TcpStream>>>,
-    heartbeat_handle: Arc<Mutex<HeartbeatHandle>>,
+    heartbeat_handle: Arc<Mutex<RabbitHeartbeatHandle>>,
     connection_timeout: Duration,
     address: SocketAddr,
 }
 
-impl Drop for RabbitConnectionManager {
+struct RabbitHeartbeatHandle(HeartbeatHandle);
+
+impl RabbitHeartbeatHandle {
+    fn handle(&self) -> &HeartbeatHandle {
+        &self.0
+    }
+}
+
+impl Drop for RabbitHeartbeatHandle {
     fn drop(&mut self) {
-        let handle = self.heartbeat_handle.lock().unwrap();
-        handle.stop();
+        self.handle().stop();
     }
 }
 
@@ -38,10 +45,27 @@ impl RabbitConnectionManager {
                 address,
             }),
             connection_timeout,
-        ).map_err(ectx!(ErrorSource::Timeout, ErrorContext::ConnectionTimeout, ErrorKind::Internal => address_clone, connection_timeout))
+        ).map_err(
+            move |_| ectx!(err ErrorSource::Timeout, ErrorContext::ConnectionTimeout, ErrorKind::Internal => address_clone, connection_timeout),
+        )
     }
 
-    fn establish_client(address: SocketAddr) -> impl Future<Item = (Client<TcpStream>, HeartbeatHandle), Error = Error> {
+    pub fn repair(&self) -> impl Future<Item = (), Error = Error> {
+        let self_client = self.client.clone();
+        let self_hearbeat_handle = self.heartbeat_handle.clone();
+        RabbitConnectionManager::establish_client(self.address).map(move |(client, hearbeat_handle)| {
+            {
+                let mut self_client = self_client.lock().unwrap();
+                *self_client = client;
+            }
+            {
+                let mut self_hearbeat_handle = self_hearbeat_handle.lock().unwrap();
+                *self_hearbeat_handle = hearbeat_handle;
+            }
+        })
+    }
+
+    fn establish_client(address: SocketAddr) -> impl Future<Item = (Client<TcpStream>, RabbitHeartbeatHandle), Error = Error> {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let address_clone3 = address.clone();
@@ -55,12 +79,12 @@ impl RabbitConnectionManager {
                         ..Default::default()
                     },
                 ).map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitConnection, ErrorKind::Internal => address_clone2))
-            }).and_then(move |(client, heartbeat)| {
+            }).and_then(move |(client, mut heartbeat)| {
+                let handle = heartbeat.handle();
                 tokio::spawn(heartbeat.map_err(|e| error!("{:?}", e)));
-                heartbeat
-                    .handle()
+                handle
                     .ok_or(ectx!(err ErrorContext::HeartbeatHandle, ErrorKind::Internal))
-                    .map(move |handle| (client, handle))
+                    .map(move |handle| (client, RabbitHeartbeatHandle(handle)))
             })
     }
 }
