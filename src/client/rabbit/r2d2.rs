@@ -20,17 +20,20 @@ pub struct RabbitConnectionManager {
     address: SocketAddr,
 }
 
-struct RabbitHeartbeatHandle(HeartbeatHandle);
+struct RabbitHeartbeatHandle(Option<HeartbeatHandle>);
 
 impl RabbitHeartbeatHandle {
-    fn handle(&self) -> &HeartbeatHandle {
-        &self.0
+    pub fn new(handle: HeartbeatHandle) -> Self {
+        RabbitHeartbeatHandle(Some(handle))
     }
 }
 
 impl Drop for RabbitHeartbeatHandle {
     fn drop(&mut self) {
-        self.handle().stop();
+        let handle = self.0.take();
+        if let Some(h) = handle {
+            h.stop();
+        }
     }
 }
 
@@ -50,7 +53,7 @@ impl RabbitConnectionManager {
         )
     }
 
-    pub fn repair(&self) -> impl Future<Item = (), Error = Error> {
+    fn repair(&self) -> impl Future<Item = (), Error = Error> {
         let self_client = self.client.clone();
         let self_hearbeat_handle = self.heartbeat_handle.clone();
         RabbitConnectionManager::establish_client(self.address).map(move |(client, hearbeat_handle)| {
@@ -84,7 +87,7 @@ impl RabbitConnectionManager {
                 tokio::spawn(heartbeat.map_err(|e| error!("{:?}", e)));
                 handle
                     .ok_or(ectx!(err ErrorContext::HeartbeatHandle, ErrorKind::Internal))
-                    .map(move |handle| (client, RabbitHeartbeatHandle(handle)))
+                    .map(move |handle| (client, RabbitHeartbeatHandle::new(handle)))
             })
     }
 }
