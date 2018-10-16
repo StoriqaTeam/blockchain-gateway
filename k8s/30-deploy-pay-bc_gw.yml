@@ -1,0 +1,41 @@
+apiVersion: apps/v1beta2
+kind: Deployment
+metadata:
+  name: payments-blockchain-gateway
+  labels:
+    stack: payments
+    app: blockchain-gateway
+spec:
+  selector:
+    matchLabels:
+      app: blockchain-gateway
+      stack: payments
+  replicas: 1
+  template:
+    metadata:
+      name: payments-blockchain-gateway
+      labels:
+        app: blockchain-gateway
+        stack: payments
+    spec:
+      imagePullSecrets:
+      - name: stq
+      containers:
+      - name: blockchain-gateway
+        image: storiqateam/payments-blockchain-gateway
+        ports:
+        - containerPort: 8000
+        env:
+        - name: RUN_MODE
+          value: k8s
+        - name: RUST_BACKTRACE
+          value: "1"
+        - name: RUST_LOG
+          value: blockchain-gateway=debug
+        volumeMounts:
+        - name: conf
+          mountPath: /app/config/
+      volumes:
+      - name: conf
+        configMap:
+          name: blockchain-gateway
