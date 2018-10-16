@@ -26,11 +26,15 @@ extern crate rlp;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
+extern crate r2d2;
 extern crate serde_qs;
 #[cfg(test)]
 extern crate tokio_core;
 extern crate uuid;
 extern crate validator;
+#[macro_use]
+extern crate lapin_futures;
+extern crate tokio;
 
 #[macro_use]
 mod macros;
