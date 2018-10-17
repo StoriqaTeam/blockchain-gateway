@@ -15,7 +15,7 @@ use utils::read_body;
 
 pub trait EthereumClient: Send + Sync + 'static {
     fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send>;
-    fn send_raw_tx(&self, tx: EthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
+    fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -68,7 +68,7 @@ impl EthereumClient for EthereumClientImpl {
         )
     }
 
-    fn send_raw_tx(&self, tx: EthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
+    fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
         let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();

@@ -21,6 +21,8 @@ pub enum ErrorSource {
     Io,
     #[fail(display = "rabbit error source - timeout error")]
     Timeout,
+    #[fail(display = "rabbit error source - lapin lib")]
+    Lapin,
 }
 
 #[allow(dead_code)]

@@ -1,5 +1,7 @@
+use std::sync::Arc;
 use std::time::Duration;
 
+use client::EthereumClient;
 use prelude::*;
 use tokio;
 use tokio::timer::Interval;
@@ -7,11 +9,12 @@ use tokio::timer::Interval;
 #[derive(Clone)]
 pub struct EthereumPollerService {
     interval: Duration,
+    client: Arc<EthereumClient>,
 }
 
 impl EthereumPollerService {
-    pub fn new(interval: Duration) -> Self {
-        Self { interval }
+    pub fn new(interval: Duration, client: Arc<EthereumClient>) -> Self {
+        Self { interval, client }
     }
 
     pub fn start(&self) {

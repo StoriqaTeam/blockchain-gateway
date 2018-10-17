@@ -48,10 +48,13 @@ mod sentry_integration;
 mod services;
 mod utils;
 
-use self::services::EthereumPollerService;
-use config::Config;
+use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
+
+use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
+use self::services::EthereumPollerService;
+use config::Config;
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -61,7 +64,23 @@ pub fn start_server() {
     let config = get_config();
     // Prepare sentry integration
     let _sentry = sentry_integration::init(config.sentry.as_ref());
-    let ethereum_poller = EthereumPollerService::new(Duration::from_secs(1));
+
+    let http_client = Arc::new(HttpClientImpl::new(&config));
+    let bitcoin_client = Arc::new(BitcoinClientImpl::new(
+        http_client.clone(),
+        config.client.blockcypher_token.clone(),
+        config.mode.clone(),
+    ));
+    let ethereum_client = Arc::new(EthereumClientImpl::new(
+        http_client.clone(),
+        config.mode.clone(),
+        config.client.infura_key.clone(),
+    ));
+
+    let ethereum_poller = EthereumPollerService::new(
+        Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
+        ethereum_client.clone(),
+    );
     thread::spawn(move || {
         ethereum_poller.start();
     });

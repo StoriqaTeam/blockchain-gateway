@@ -12,6 +12,7 @@ pub struct Config {
     pub client: Client,
     #[serde(deserialize_with = "deserialize_mode")]
     pub mode: Mode,
+    pub poller: Poller,
     pub sentry: Option<SentryConfig>,
 }
 
@@ -33,6 +34,12 @@ pub struct Client {
     pub blockcypher_token: String,
     pub infura_key: String,
     pub infura_secret: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Poller {
+    pub bitcoin_interval_secs: usize,
+    pub ethereum_interval_secs: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

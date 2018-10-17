@@ -7,7 +7,7 @@ use prelude::*;
 
 pub trait BitcoinService: Send + Sync + 'static {
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
-    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
+    fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -27,7 +27,7 @@ impl BitcoinService for BitcoinServiceImpl {
         Box::new(self.client.get_utxos(address).map_err(ectx!(convert address_clone)))
     }
 
-    fn send_raw_tx(&self, tx: BitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
+    fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
         let tx_clone = tx.clone();
         Box::new(self.client.send_raw_tx(tx).map_err(ectx!(convert tx_clone)))
     }

@@ -10,11 +10,14 @@ use lapin_async::connection::ConnectionState;
 use lapin_futures::channel::{Channel, ConfirmSelectOptions};
 use lapin_futures::client::{Client, ConnectionOptions, HeartbeatHandle};
 use prelude::*;
-use r2d2::ManageConnection;
+use r2d2::{ManageConnection, Pool};
 use tokio;
 use tokio::net::tcp::TcpStream;
 use tokio::timer::timeout::Timeout;
 
+pub type RabbitPool = Pool<RabbitConnectionManager>;
+
+#[derive(Clone)]
 pub struct RabbitConnectionManager {
     client: Arc<Mutex<Client<TcpStream>>>,
     heartbeat_handle: Arc<Mutex<RabbitHeartbeatHandle>>,
