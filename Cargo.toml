@@ -21,7 +21,8 @@ uuid = { version = "0.6", features = ["use_std", "v4", "serde"] }
 log = "0.4"
 sentry = "0.12"
 r2d2 = "0.8"
-lapin-futures = "0.13"
+lapin-async = {version = "0.13", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
+lapin-futures = {version = "0.13", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
 serde = "1"
 serde_derive = "1"
 serde_json = "1"

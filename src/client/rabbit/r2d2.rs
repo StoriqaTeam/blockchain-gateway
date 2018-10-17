@@ -5,7 +5,9 @@ use std::time::Duration;
 
 use super::error::*;
 use failure::Compat;
-use lapin_futures::channel::Channel;
+use futures::future::Either;
+use lapin_async::connection::ConnectionState;
+use lapin_futures::channel::{Channel, ConfirmSelectOptions};
 use lapin_futures::client::{Client, ConnectionOptions, HeartbeatHandle};
 use prelude::*;
 use r2d2::ManageConnection;
@@ -54,18 +56,23 @@ impl RabbitConnectionManager {
     }
 
     fn repair(&self) -> impl Future<Item = (), Error = Error> {
+        if self.is_connecting_conn() {
+            return Either::A(Err(ectx!(err ErrorContext::AlreadyConnecting, ErrorKind::Internal)).into_future());
+        }
         let self_client = self.client.clone();
         let self_hearbeat_handle = self.heartbeat_handle.clone();
-        RabbitConnectionManager::establish_client(self.address).map(move |(client, hearbeat_handle)| {
-            {
-                let mut self_client = self_client.lock().unwrap();
-                *self_client = client;
-            }
-            {
-                let mut self_hearbeat_handle = self_hearbeat_handle.lock().unwrap();
-                *self_hearbeat_handle = hearbeat_handle;
-            }
-        })
+        Either::B(
+            RabbitConnectionManager::establish_client(self.address).map(move |(client, hearbeat_handle)| {
+                {
+                    let mut self_client = self_client.lock().unwrap();
+                    *self_client = client;
+                }
+                {
+                    let mut self_hearbeat_handle = self_hearbeat_handle.lock().unwrap();
+                    *self_hearbeat_handle = hearbeat_handle;
+                }
+            }),
+        )
     }
 
     fn establish_client(address: SocketAddr) -> impl Future<Item = (Client<TcpStream>, RabbitHeartbeatHandle), Error = Error> {
@@ -90,18 +97,58 @@ impl RabbitConnectionManager {
                     .map(move |handle| (client, RabbitHeartbeatHandle::new(handle)))
             })
     }
+
+    fn is_broken_conn(&self) -> bool {
+        let cli = self.client.lock().unwrap();
+        let transport = cli.transport.lock().unwrap();
+        match transport.conn.state {
+            ConnectionState::Closing(_) | ConnectionState::Closed | ConnectionState::Error => true,
+            _ => false,
+        }
+    }
+
+    fn is_connecting_conn(&self) -> bool {
+        let cli = self.client.lock().unwrap();
+        let transport = cli.transport.lock().unwrap();
+        match transport.conn.state {
+            ConnectionState::Connecting(_) | ConnectionState::Connected => true,
+            _ => false,
+        }
+    }
+
+    fn is_connected_chan(&self, chan: &Channel<TcpStream>) -> bool {
+        let cli = self.client.lock().unwrap();
+        let transport = cli.transport.lock().unwrap();
+        transport.conn.is_connected(chan.id)
+    }
 }
 
 impl ManageConnection for RabbitConnectionManager {
     type Connection = Channel<TcpStream>;
     type Error = Compat<Error>;
     fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        panic!("Not supposed")
+        let cli = self.client.lock().unwrap();
+        cli.create_confirm_channel(ConfirmSelectOptions { nowait: false })
+            .wait()
+            .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))
+            .map_err(|e: Error| e.compat())
     }
     fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
-        unimplemented!()
+        if self.is_broken_conn() {
+            let e: Error = ectx!(err format_err!("Connection is broken"), ErrorKind::Internal);
+            return Err(e.compat());
+        }
+        if self.is_connecting_conn() {
+            let e: Error = ectx!(err format_err!("Connection is in process of connecting"), ErrorKind::Internal);
+            return Err(e.compat());
+        }
+        if self.is_connected_chan(conn) {
+            let e: Error = ectx!(err format_err!("Channel is not connected"), ErrorKind::Internal);
+            return Err(e.compat());
+        }
+        Ok(())
     }
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        unimplemented!()
+        self.is_valid(conn).is_err()
     }
 }

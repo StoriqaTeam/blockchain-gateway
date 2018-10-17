@@ -30,10 +30,14 @@ pub enum ErrorContext {
     TcpConnection,
     #[fail(display = "rabbit error context - error establishing RabbitMQ connection")]
     RabbitConnection,
+    #[fail(display = "rabbit error context - error creating RabbitMQ channel")]
+    RabbitChannel,
     #[fail(display = "rabbit error context - error acquiring heartbeat handle")]
     HeartbeatHandle,
     #[fail(display = "rabbit error context - connection timeout")]
     ConnectionTimeout,
+    #[fail(display = "rabbit error context - attempted to connect again in process of establishing a connection")]
+    AlreadyConnecting,
 }
 
 derive_error_impls!();

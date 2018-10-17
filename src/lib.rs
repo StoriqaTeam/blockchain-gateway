@@ -26,6 +26,7 @@ extern crate rlp;
 extern crate serde;
 #[macro_use]
 extern crate serde_json;
+extern crate lapin_async;
 extern crate r2d2;
 extern crate serde_qs;
 #[cfg(test)]
@@ -47,7 +48,10 @@ mod sentry_integration;
 mod services;
 mod utils;
 
+use self::services::EthereumPollerService;
 use config::Config;
+use std::thread;
+use std::time::Duration;
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -57,6 +61,11 @@ pub fn start_server() {
     let config = get_config();
     // Prepare sentry integration
     let _sentry = sentry_integration::init(config.sentry.as_ref());
+    let ethereum_poller = EthereumPollerService::new(Duration::from_secs(1));
+    thread::spawn(move || {
+        ethereum_poller.start();
+    });
+
     api::start_server(config);
 }
 
