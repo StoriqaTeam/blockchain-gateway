@@ -18,6 +18,7 @@ extern crate sentry;
 extern crate base64;
 extern crate config as config_crate;
 extern crate futures;
+extern crate futures_cpupool;
 extern crate hyper;
 extern crate hyper_tls;
 extern crate rand;

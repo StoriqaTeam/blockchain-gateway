@@ -1,11 +1,14 @@
 use std::io::Error as StdIoError;
 
 use super::error::*;
+use super::r2d2::RabbitConnectionManager;
 use super::r2d2::RabbitPool;
 use futures::future;
+use futures_cpupool::CpuPool;
 use lapin_futures::channel::Channel;
 use models::*;
 use prelude::*;
+use r2d2::PooledConnection;
 use serde_json;
 use tokio::net::tcp::TcpStream;
 
@@ -15,48 +18,27 @@ pub trait TransactionPublisher {
 
 #[derive(Clone)]
 pub struct TransactionPublisherImpl {
-    pool: RabbitPool,
+    rabbit_pool: RabbitPool,
+    thread_pool: CpuPool,
 }
 
 impl TransactionPublisherImpl {
-    pub fn new(pool: RabbitPool) -> Self {
-        Self { pool }
+    pub fn new(rabbit_pool: RabbitPool, thread_pool: CpuPool) -> Self {
+        Self { rabbit_pool, thread_pool }
     }
-}
 
-impl TransactionPublisher for TransactionPublisherImpl {
-    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error>> {
+    pub fn init(&self) -> impl Future<Item = (), Error = Error> {
         let self_clone = self.clone();
-        Box::new(
-            self.pool
-                .get()
-                .map_err(ectx!(ErrorKind::Internal))
-                .into_future()
-                .and_then(move |channel| {
-                    self_clone
-                        .declare(&channel)
-                        .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                        .map(move |_| channel)
-                }).and_then(move |channel| {
-                    let futures = txs.into_iter().map(move |tx| {
-                        let routing_key = format!("{}", tx.currency);
-                        let payload = serde_json::to_string(&tx).unwrap().into_bytes();
-                        channel.clone().basic_publish(
-                            "blockchain_transactions",
-                            &routing_key,
-                            payload,
-                            Default::default(),
-                            Default::default(),
-                        )
-                    });
-                    future::join_all(futures).map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                }).map(|_| ()),
-        )
+        self.get_channel().and_then(move |channel| self_clone.declare(&channel))
     }
-}
 
-impl TransactionPublisherImpl {
-    fn declare(&self, channel: &Channel<TcpStream>) -> impl Future<Item = (), Error = StdIoError> {
+    fn get_channel(&self) -> impl Future<Item = PooledConnection<RabbitConnectionManager>, Error = Error> {
+        let rabbit_pool = self.rabbit_pool.clone();
+        self.thread_pool
+            .spawn_fn(move || rabbit_pool.get().map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal)))
+    }
+
+    fn declare(&self, channel: &Channel<TcpStream>) -> impl Future<Item = (), Error = Error> {
         let f1: Box<Future<Item = (), Error = StdIoError>> =
             Box::new(channel.exchange_declare("blockchain_transactions", "direct", Default::default(), Default::default()));
         let f2: Box<Future<Item = (), Error = StdIoError>> = Box::new(
@@ -95,6 +77,33 @@ impl TransactionPublisherImpl {
             Default::default(),
             Default::default(),
         ));
-        future::join_all(vec![f1, f2, f3, f4, f5, f6, f7]).map(|_| ())
+        future::join_all(vec![f1, f2, f3, f4, f5, f6, f7])
+            .map(|_| ())
+            .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
     }
 }
+
+impl TransactionPublisher for TransactionPublisherImpl {
+    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error>> {
+        let self_clone = self.clone();
+        Box::new(
+            self.get_channel()
+                .and_then(move |channel| {
+                    let futures = txs.into_iter().map(move |tx| {
+                        let routing_key = format!("{}", tx.currency);
+                        let payload = serde_json::to_string(&tx).unwrap().into_bytes();
+                        channel.clone().basic_publish(
+                            "blockchain_transactions",
+                            &routing_key,
+                            payload,
+                            Default::default(),
+                            Default::default(),
+                        )
+                    });
+                    future::join_all(futures).map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
+                }).map(|_| ()),
+        )
+    }
+}
+
+impl TransactionPublisherImpl {}

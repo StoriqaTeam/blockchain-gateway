@@ -30,6 +30,8 @@ pub enum ErrorSource {
 pub enum ErrorContext {
     #[fail(display = "rabbit error context - error establishing TCP/IP connection")]
     TcpConnection,
+    #[fail(display = "rabbit error context - error parsing RabbitMQ url")]
+    RabbitUrl,
     #[fail(display = "rabbit error context - error establishing RabbitMQ connection")]
     RabbitConnection,
     #[fail(display = "rabbit error context - error creating RabbitMQ channel")]

@@ -13,6 +13,7 @@ pub struct Config {
     #[serde(deserialize_with = "deserialize_mode")]
     pub mode: Mode,
     pub poller: Poller,
+    pub rabbit: Rabbit,
     pub sentry: Option<SentryConfig>,
 }
 
@@ -26,6 +27,13 @@ pub struct Server {
 pub struct Database {
     pub url: String,
     pub thread_pool_size: usize,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Rabbit {
+    pub url: String,
+    pub thread_pool_size: usize,
+    pub connection_timeout_secs: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]
