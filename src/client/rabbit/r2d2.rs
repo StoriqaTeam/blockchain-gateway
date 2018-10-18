@@ -47,7 +47,7 @@ impl Drop for RabbitHeartbeatHandle {
 }
 
 impl RabbitConnectionManager {
-    pub fn init(config: &Config) -> impl Future<Item = Self, Error = Error> {
+    pub fn create(config: &Config) -> impl Future<Item = Self, Error = Error> {
         let connection_timeout = Duration::from_secs(config.rabbit.connection_timeout_secs as u64);
         RabbitConnectionManager::extract_options_and_address(config)
             .into_future()

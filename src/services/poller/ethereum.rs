@@ -2,6 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use client::EthereumClient;
+use client::TransactionPublisher;
 use prelude::*;
 use tokio;
 use tokio::timer::Interval;
@@ -10,11 +11,16 @@ use tokio::timer::Interval;
 pub struct EthereumPollerService {
     interval: Duration,
     client: Arc<EthereumClient>,
+    publisher: Arc<TransactionPublisher>,
 }
 
 impl EthereumPollerService {
-    pub fn new(interval: Duration, client: Arc<EthereumClient>) -> Self {
-        Self { interval, client }
+    pub fn new(interval: Duration, client: Arc<EthereumClient>, publisher: Arc<TransactionPublisher>) -> Self {
+        Self {
+            interval,
+            client,
+            publisher,
+        }
     }
 
     pub fn start(&self) {
@@ -23,7 +29,7 @@ impl EthereumPollerService {
             self_clone.tick();
             Ok(())
         });
-        tokio::run(interval.map_err(|_| ()));
+        tokio::spawn(interval.map_err(|_| ()));
     }
 
     fn tick(&self) {

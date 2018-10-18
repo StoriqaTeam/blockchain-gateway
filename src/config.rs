@@ -34,6 +34,7 @@ pub struct Rabbit {
     pub url: String,
     pub thread_pool_size: usize,
     pub connection_timeout_secs: usize,
+    pub connection_pool_size: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -18,3 +18,4 @@ ethereum_interval_secs = 10
 url = "amqp://guest:guest@localhost:5672/vhost?heartbeat=15&frame_max=131072"
 thread_pool_size = 2
 connection_timeout_secs = 10
+connection_pool_size = 10

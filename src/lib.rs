@@ -55,7 +55,9 @@ use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
 use self::services::EthereumPollerService;
+use client::{RabbitConnectionManager, TransactionPublisherImpl};
 use config::Config;
+use prelude::*;
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -78,12 +80,26 @@ pub fn start_server() {
         config.client.infura_key.clone(),
     ));
 
-    let ethereum_poller = EthereumPollerService::new(
-        Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
-        ethereum_client.clone(),
-    );
+    let config_clone = config.clone();
     thread::spawn(move || {
-        ethereum_poller.start();
+        let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
+        let f = RabbitConnectionManager::create(&config_clone)
+            .map(move |rabbit_connection_manager| {
+                let rabbit_connection_pool = r2d2::Pool::builder()
+                    .max_size(config_clone.rabbit.connection_pool_size as u32)
+                    .build(rabbit_connection_manager)
+                    .expect("Cannot build rabbit connection pool");
+                let publisher = Arc::new(TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool));
+                let ethereum_poller = EthereumPollerService::new(
+                    Duration::from_secs(config_clone.poller.bitcoin_interval_secs as u64),
+                    ethereum_client.clone(),
+                    publisher,
+                );
+                ethereum_poller.start();
+            }).map_err(|e| {
+                error!("Rabbit init process: {}", e);
+            });
+        tokio::run(f);
     });
 
     api::start_server(config);

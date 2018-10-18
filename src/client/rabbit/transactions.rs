@@ -12,7 +12,7 @@ use r2d2::PooledConnection;
 use serde_json;
 use tokio::net::tcp::TcpStream;
 
-pub trait TransactionPublisher {
+pub trait TransactionPublisher: Send + Sync + 'static {
     fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error>>;
 }
 
