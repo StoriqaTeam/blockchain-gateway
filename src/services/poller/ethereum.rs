@@ -48,13 +48,15 @@ impl EthereumPollerService {
         let mut self_clone2 = self.clone();
         let client = self.client.clone();
         let publisher = self.publisher.clone();
+        let number_of_tracked_confirmations = self.number_of_tracked_confirmations;
         let f = self
             .client
             .get_current_block()
             .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             .and_then(move |current_block| {
-                let from_block = self_clone.current_block.unwrap_or(current_block);
+                let from_block = self_clone.current_block.unwrap_or(current_block) - (number_of_tracked_confirmations as u64);
                 let to_block = current_block;
+                debug!("Fething ethereum transactions from `{}` block to `{}` block", from_block, to_block);
                 client
                     .get_eth_transactions(from_block as u64, to_block as u64)
                     .map(move |txs| (txs, current_block))
@@ -65,6 +67,7 @@ impl EthereumPollerService {
                 }
                 (txs, current_block)
             }).and_then(move |(txs, current_block)| {
+                debug!("Got ethereum transactions: `{:#?}`", &txs);
                 publisher
                     .publish(txs)
                     .map(move |_| current_block)

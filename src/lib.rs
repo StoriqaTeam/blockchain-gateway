@@ -30,7 +30,6 @@ extern crate serde_json;
 extern crate lapin_async;
 extern crate r2d2;
 extern crate serde_qs;
-#[cfg(test)]
 extern crate tokio_core;
 extern crate uuid;
 extern crate validator;
@@ -55,6 +54,7 @@ use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
 use self::services::EthereumPollerService;
+use self::utils::log_error;
 use client::{RabbitConnectionManager, TransactionPublisherImpl};
 use config::Config;
 use prelude::*;
@@ -82,25 +82,32 @@ pub fn start_server() {
 
     let config_clone = config.clone();
     thread::spawn(move || {
+        let mut core = tokio_core::reactor::Core::new().unwrap();
+        info!("Started creating rabbit connection pool");
         let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
+        let config_clone2 = config_clone.clone();
         let f = RabbitConnectionManager::create(&config_clone)
-            .map(move |rabbit_connection_manager| {
+            .and_then(move |rabbit_connection_manager| {
                 let rabbit_connection_pool = r2d2::Pool::builder()
                     .max_size(config_clone.rabbit.connection_pool_size as u32)
                     .build(rabbit_connection_manager)
                     .expect("Cannot build rabbit connection pool");
-                let publisher = Arc::new(TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool));
+                info!("Finished creating rabbit connection pool");
+                let publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
+                publisher.init().map(|_| publisher)
+            }).map(|publisher| {
+                let publisher = Arc::new(publisher);
                 let ethereum_poller = EthereumPollerService::new(
-                    Duration::from_secs(config_clone.poller.bitcoin_interval_secs as u64),
+                    Duration::from_secs(config_clone2.poller.ethereum_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher,
-                    config_clone.poller.number_of_tracked_confirmations,
+                    config_clone2.poller.number_of_tracked_confirmations,
                 );
                 ethereum_poller.start();
             }).map_err(|e| {
-                error!("Rabbit init process: {}", e);
+                log_error(&e);
             });
-        tokio::run(f);
+        let _ = core.run(f);
     });
 
     api::start_server(config);

@@ -1,5 +1,5 @@
 use std::io::Error as IoError;
-use std::net::SocketAddr;
+use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
@@ -79,10 +79,15 @@ impl RabbitConnectionManager {
             .and_then(|captures| captures.get(1))
             .map(|mtch| mtch.as_str().to_string())
             .ok_or(ectx!(err ErrorContext::RabbitUrl, ErrorKind::Internal => config))
-            .and_then(|host_and_port| {
-                host_and_port
-                    .parse::<SocketAddr>()
-                    .map_err(ectx!(try ErrorContext::RabbitUrl, ErrorKind::Internal => url))
+            .and_then(|host_and_port| -> Result<SocketAddr, Error> {
+                let url_clone = url.clone();
+                let mut addrs_iter = host_and_port
+                    .to_socket_addrs()
+                    .map_err(ectx!(try ErrorContext::RabbitUrl, ErrorKind::Internal => url))?;
+                let addr = addrs_iter
+                    .next()
+                    .ok_or(ectx!(try err ErrorContext::RabbitUrl, ErrorKind::Internal => url_clone))?;
+                Ok(addr)
             })?;
         let options = config
             .rabbit

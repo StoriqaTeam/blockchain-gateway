@@ -40,6 +40,7 @@ impl EthereumClientImpl {
 impl EthereumClientImpl {
     fn get_eth_transactions_for_block(&self, block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send> {
         let http_client = self.http_client.clone();
+        let block = format!("0x{:x}", block);
         let request = json!({
             "jsonrpc": "2.0",
             "id": 1,

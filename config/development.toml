@@ -16,7 +16,7 @@ ethereum_interval_secs = 10
 number_of_tracked_confirmations = 3
 
 [rabbit]
-url = "amqp://guest:guest@localhost:5672/vhost?heartbeat=15&frame_max=131072"
+url = "amqp://guest:guest@localhost:5672//?heartbeat=15&frame_max=131072"
 thread_pool_size = 2
 connection_timeout_secs = 10
 connection_pool_size = 10
