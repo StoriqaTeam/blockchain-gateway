@@ -12,6 +12,7 @@ pub struct EthereumPollerService {
     interval: Duration,
     client: Arc<EthereumClient>,
     publisher: Arc<TransactionPublisher>,
+    current_block: Option<u128>,
 }
 
 impl EthereumPollerService {
@@ -20,6 +21,7 @@ impl EthereumPollerService {
             interval,
             client,
             publisher,
+            current_block: None,
         }
     }
 
@@ -33,6 +35,13 @@ impl EthereumPollerService {
     }
 
     fn tick(&self) {
+        let mut self_clone = self.clone();
+        // self.client.get_current_block().and_then(move |current_block| {
+        //     let current_block = self_clone.current_block.unwrap_or(current_block);
+
+        //     self_clone.current_block = Some(current_block);
+
+        // })
         println!("Tick");
     }
 }

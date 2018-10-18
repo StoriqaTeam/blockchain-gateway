@@ -33,6 +33,8 @@ pub enum ErrorKind {
 #[allow(dead_code)]
 #[derive(Copy, Clone, Eq, PartialEq, Debug, Fail)]
 pub enum ErrorContext {
+    #[fail(display = "http client error - operations overflow")]
+    Overflow,
     #[fail(display = "http client error - converting UTF-8 from response bytes")]
     UTF8,
     #[fail(display = "http client error - converting to json struct from string")]

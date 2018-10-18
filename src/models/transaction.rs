@@ -1,5 +1,6 @@
 use std::fmt::{self, Display};
 
+use super::amount::Amount;
 use super::currency::Currency;
 
 /// Hex encoded bitcoin transaction
@@ -31,8 +32,9 @@ pub struct BlockchainTransaction {
     pub hash: String,
     pub from: String,
     pub to: String,
+    pub block_number: u64,
     pub currency: Currency,
-    pub value: String,
-    pub fee: String,
+    pub value: Amount,
+    pub fee: Amount,
     pub confirmations: usize,
 }

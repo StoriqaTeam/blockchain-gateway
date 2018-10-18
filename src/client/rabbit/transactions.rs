@@ -59,25 +59,49 @@ impl TransactionPublisherImpl {
         let f5: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.queue_bind(
             "btc_transactions",
             "blockchain_transactions",
-            "btc",
+            "btc_transactions",
             Default::default(),
             Default::default(),
         ));
         let f6 = Box::new(channel.queue_bind(
             "eth_transactions",
             "blockchain_transactions",
-            "eth",
+            "eth_transactions",
             Default::default(),
             Default::default(),
         ));
         let f7 = Box::new(channel.queue_bind(
             "stq_transactions",
             "blockchain_transactions",
-            "stq",
+            "stq_transactions",
             Default::default(),
             Default::default(),
         ));
-        future::join_all(vec![f1, f2, f3, f4, f5, f6, f7])
+        let f8 = Box::new(
+            channel
+                .queue_declare("eth_current_block", Default::default(), Default::default())
+                .map(|_| ()),
+        );
+        let f9 = Box::new(
+            channel
+                .queue_declare("btc_current_block", Default::default(), Default::default())
+                .map(|_| ()),
+        );
+        let f10 = Box::new(channel.queue_bind(
+            "eth_current_block",
+            "blockchain_transactions",
+            "eth_current_block",
+            Default::default(),
+            Default::default(),
+        ));
+        let f11 = Box::new(channel.queue_bind(
+            "btc_current_block",
+            "blockchain_transactions",
+            "btc_current_block",
+            Default::default(),
+            Default::default(),
+        ));
+        future::join_all(vec![f1, f2, f3, f4, f5, f6, f7, f8, f9, f10, f11])
             .map(|_| ())
             .map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
     }

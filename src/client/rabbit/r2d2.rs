@@ -165,7 +165,7 @@ impl ManageConnection for RabbitConnectionManager {
     type Error = Compat<Error>;
     fn connect(&self) -> Result<Self::Connection, Self::Error> {
         let cli = self.client.lock().unwrap();
-        cli.create_confirm_channel(ConfirmSelectOptions { nowait: false })
+        cli.create_channel()
             .wait()
             .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))
             .map_err(|e: Error| e.compat())
