@@ -1,27 +1,36 @@
 use std::sync::Arc;
 use std::time::Duration;
 
+use super::super::error::*;
 use client::EthereumClient;
 use client::TransactionPublisher;
 use prelude::*;
 use tokio;
 use tokio::timer::Interval;
+use utils::log_error;
 
 #[derive(Clone)]
 pub struct EthereumPollerService {
     interval: Duration,
     client: Arc<EthereumClient>,
     publisher: Arc<TransactionPublisher>,
-    current_block: Option<u128>,
+    current_block: Option<u64>,
+    number_of_tracked_confirmations: usize,
 }
 
 impl EthereumPollerService {
-    pub fn new(interval: Duration, client: Arc<EthereumClient>, publisher: Arc<TransactionPublisher>) -> Self {
+    pub fn new(
+        interval: Duration,
+        client: Arc<EthereumClient>,
+        publisher: Arc<TransactionPublisher>,
+        number_of_tracked_confirmations: usize,
+    ) -> Self {
         Self {
             interval,
             client,
             publisher,
             current_block: None,
+            number_of_tracked_confirmations,
         }
     }
 
@@ -35,13 +44,37 @@ impl EthereumPollerService {
     }
 
     fn tick(&self) {
-        let mut self_clone = self.clone();
-        // self.client.get_current_block().and_then(move |current_block| {
-        //     let current_block = self_clone.current_block.unwrap_or(current_block);
-
-        //     self_clone.current_block = Some(current_block);
-
-        // })
+        let self_clone = self.clone();
+        let mut self_clone2 = self.clone();
+        let client = self.client.clone();
+        let publisher = self.publisher.clone();
+        let f = self
+            .client
+            .get_current_block()
+            .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
+            .and_then(move |current_block| {
+                let from_block = self_clone.current_block.unwrap_or(current_block);
+                let to_block = current_block;
+                client
+                    .get_eth_transactions(from_block as u64, to_block as u64)
+                    .map(move |txs| (txs, current_block))
+                    .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
+            }).map(|(mut txs, current_block)| {
+                for tx in txs.iter_mut() {
+                    tx.confirmations = (current_block - tx.block_number) as usize;
+                }
+                (txs, current_block)
+            }).and_then(move |(txs, current_block)| {
+                publisher
+                    .publish(txs)
+                    .map(move |_| current_block)
+                    .map_err(ectx!(ErrorSource::Publisher, ErrorKind::Internal))
+            }).map(move |current_block| {
+                self_clone2.current_block = Some(current_block);
+            }).map_err(|e: Error| {
+                log_error(&e);
+            });
+        tokio::spawn(f);
         println!("Tick");
     }
 }

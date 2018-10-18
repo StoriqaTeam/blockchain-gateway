@@ -49,6 +49,7 @@ pub struct Client {
 pub struct Poller {
     pub bitcoin_interval_secs: usize,
     pub ethereum_interval_secs: usize,
+    pub number_of_tracked_confirmations: usize,
 }
 
 #[derive(Debug, Deserialize, Clone)]

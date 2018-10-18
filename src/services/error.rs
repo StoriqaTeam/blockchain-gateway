@@ -30,6 +30,10 @@ pub enum ErrorKind {
 pub enum ErrorSource {
     #[fail(display = "service error source - r2d2")]
     R2D2,
+    #[fail(display = "service error source - blockchain client")]
+    Client,
+    #[fail(display = "service error source - rabbit publisher")]
+    Publisher,
 }
 
 #[allow(dead_code)]

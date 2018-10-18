@@ -13,6 +13,7 @@ infura_secret = "b18f14aa53094950a51597600e41c422"
 [poller]
 bitcoin_interval_secs = 60
 ethereum_interval_secs = 10
+number_of_tracked_confirmations = 3
 
 [rabbit]
 url = "amqp://guest:guest@localhost:5672/vhost?heartbeat=15&frame_max=131072"

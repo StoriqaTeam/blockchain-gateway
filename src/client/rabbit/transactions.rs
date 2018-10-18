@@ -13,7 +13,7 @@ use serde_json;
 use tokio::net::tcp::TcpStream;
 
 pub trait TransactionPublisher: Send + Sync + 'static {
-    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error>>;
+    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -108,7 +108,7 @@ impl TransactionPublisherImpl {
 }
 
 impl TransactionPublisher for TransactionPublisherImpl {
-    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error>> {
+    fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error> + Send> {
         let self_clone = self.clone();
         Box::new(
             self.get_channel()

@@ -94,6 +94,7 @@ pub fn start_server() {
                     Duration::from_secs(config_clone.poller.bitcoin_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher,
+                    config_clone.poller.number_of_tracked_confirmations,
                 );
                 ethereum_poller.start();
             }).map_err(|e| {
