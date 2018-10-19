@@ -6,7 +6,7 @@ use std::time::Duration;
 
 use failure::Compat;
 use futures::future::Either;
-use lapin_async::connection::ConnectionState;
+use lapin_async::connection::{ConnectingState, ConnectionState};
 use lapin_futures::channel::{Channel, ConfirmSelectOptions};
 use lapin_futures::client::{Client, ConnectionOptions, HeartbeatHandle};
 use prelude::*;
@@ -109,6 +109,11 @@ impl RabbitConnectionManager {
         if self.is_connecting_conn() {
             return Either::A(Err(ectx!(err ErrorContext::AlreadyConnecting, ErrorKind::Internal)).into_future());
         }
+        {
+            let cli = self.client.lock().unwrap();
+            let mut transport = cli.transport.lock().unwrap();
+            transport.conn.state = ConnectionState::Connecting(ConnectingState::Initial);
+        }
         let self_client = self.client.clone();
         let self_hearbeat_handle = self.heartbeat_handle.clone();
         Either::B(
@@ -134,15 +139,23 @@ impl RabbitConnectionManager {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let address_clone3 = address.clone();
-        info!("Connecting to rabbit at `{:?}`", address);
+        info!("Connecting to rabbit at `{}`", address);
         TcpStream::connect(&address)
             .map_err(ectx!(ErrorSource::Io, ErrorContext::TcpConnection, ErrorKind::Internal => address_clone3))
             .and_then(move |stream| {
+                info!("TCP connection established. Handshake with rabbit...");
                 Client::connect(stream, options)
                     .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitConnection, ErrorKind::Internal => address_clone2))
             }).and_then(move |(client, mut heartbeat)| {
+                info!("Connected to rabbit");
                 let handle = heartbeat.handle();
-                tokio::spawn(heartbeat.map_err(|e| error!("{:?}", e)));
+                let client_clone = client.clone();
+                tokio::spawn(heartbeat.map_err(move |e| {
+                    let e: Error = ectx!(err ErrorContext::Heartbeat, ErrorKind::Internal);
+                    log_error(&e);
+                    let mut transport = client_clone.transport.lock().unwrap();
+                    transport.conn.state = ConnectionState::Error;
+                }));
                 handle
                     .ok_or(ectx!(err ErrorContext::HeartbeatHandle, ErrorKind::Internal))
                     .map(move |handle| (client, RabbitHeartbeatHandle::new(handle)))
@@ -192,6 +205,23 @@ impl ManageConnection for RabbitConnectionManager {
         if self.is_broken_conn() {
             let e: Error = ectx!(err format_err!("Connection is broken"), ErrorKind::Internal);
             log_error(&e);
+            if !self.is_connecting_conn() {
+                info!("Resetting tcp connection to rabbit...");
+                // {
+                //     let cli = self.client.lock().unwrap();
+                //     let mut transport = cli.transport.lock().unwrap();
+                //     transport.conn.state = ConnectionState::Connecting(ConnectingState::Initial);
+                // }
+                let self_clone = self.clone();
+                tokio::spawn(self.repair().map_err(move |e| {
+                    // {
+                    //     let cli = self_clone.client.lock().unwrap();
+                    //     let mut transport = cli.transport.lock().unwrap();
+                    //     transport.conn.state = ConnectionState::Error;
+                    // }
+                    log_error(&e);
+                }));
+            }
             return Err(e.compat());
         }
         if self.is_connecting_conn() {
@@ -204,6 +234,7 @@ impl ManageConnection for RabbitConnectionManager {
             log_error(&e);
             return Err(e.compat());
         }
+        info!("Channel is ok");
         Ok(())
     }
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {

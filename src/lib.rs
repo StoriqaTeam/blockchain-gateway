@@ -121,6 +121,7 @@ pub fn start_server() {
                 log_error(&e);
             });
         let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
+        warn!("Poller process exited!");
     });
 
     api::start_server(config);
