@@ -134,6 +134,7 @@ impl RabbitConnectionManager {
         let address_clone = address.clone();
         let address_clone2 = address.clone();
         let address_clone3 = address.clone();
+        info!("Connecting to rabbit at `{:?}`", address);
         TcpStream::connect(&address)
             .map_err(ectx!(ErrorSource::Io, ErrorContext::TcpConnection, ErrorKind::Internal => address_clone3))
             .and_then(move |stream| {
