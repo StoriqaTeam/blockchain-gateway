@@ -43,7 +43,9 @@ mod api;
 mod client;
 mod config;
 mod models;
+mod pollers;
 mod prelude;
+mod rabbit;
 mod sentry_integration;
 mod services;
 mod utils;
@@ -53,11 +55,11 @@ use std::thread;
 use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
-use self::services::EthereumPollerService;
+use self::pollers::EthereumPollerService;
 use self::utils::log_error;
-use client::{RabbitConnectionManager, TransactionPublisherImpl};
 use config::Config;
 use prelude::*;
+use rabbit::{RabbitConnectionManager, TransactionPublisherImpl};
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -102,6 +104,7 @@ pub fn start_server() {
                     ethereum_client.clone(),
                     publisher,
                     config_clone2.poller.number_of_tracked_confirmations,
+                    config_clone2.poller.ethereum_start_block,
                 );
                 ethereum_poller.start();
             }).map_err(|e| {

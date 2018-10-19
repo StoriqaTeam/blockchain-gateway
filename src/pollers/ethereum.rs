@@ -1,10 +1,10 @@
 use std::sync::Arc;
 use std::time::Duration;
 
-use super::super::error::*;
+use super::error::*;
 use client::EthereumClient;
-use client::TransactionPublisher;
 use prelude::*;
+use rabbit::TransactionPublisher;
 use tokio;
 use tokio::timer::Interval;
 use utils::log_error;
@@ -24,12 +24,13 @@ impl EthereumPollerService {
         client: Arc<EthereumClient>,
         publisher: Arc<TransactionPublisher>,
         number_of_tracked_confirmations: usize,
+        start_block: Option<u64>,
     ) -> Self {
         Self {
             interval,
             client,
             publisher,
-            current_block: None,
+            current_block: start_block,
             number_of_tracked_confirmations,
         }
     }
@@ -56,7 +57,6 @@ impl EthereumPollerService {
             .and_then(move |current_block| {
                 let from_block = self_clone.current_block.unwrap_or(current_block) - (number_of_tracked_confirmations as u64);
                 let to_block = current_block;
-                debug!("Fething ethereum transactions from `{}` block to `{}` block", from_block, to_block);
                 client
                     .get_eth_transactions(from_block as u64, to_block as u64)
                     .map(move |txs| (txs, current_block))
@@ -67,7 +67,6 @@ impl EthereumPollerService {
                 }
                 (txs, current_block)
             }).and_then(move |(txs, current_block)| {
-                debug!("Got ethereum transactions: `{:#?}`", &txs);
                 publisher
                     .publish(txs)
                     .map(move |_| current_block)

@@ -50,6 +50,8 @@ pub struct Poller {
     pub bitcoin_interval_secs: usize,
     pub ethereum_interval_secs: usize,
     pub number_of_tracked_confirmations: usize,
+    pub ethereum_start_block: Option<u64>,
+    pub bitcoin_start_block: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

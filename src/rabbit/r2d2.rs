@@ -177,14 +177,14 @@ impl ManageConnection for RabbitConnectionManager {
     type Connection = Channel<TcpStream>;
     type Error = Compat<Error>;
     fn connect(&self) -> Result<Self::Connection, Self::Error> {
-        let cli = self.client.lock().unwrap();
         trace!("Creating rabbit channel...");
+        let cli = self.client.lock().unwrap();
         let ch = cli
             .create_channel()
             .wait()
             .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))
             .map_err(|e: Error| e.compat());
-        trace!("Done");
+        trace!("Rabbit channel is created");
         ch
     }
     fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
