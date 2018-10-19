@@ -78,6 +78,5 @@ impl EthereumPollerService {
                 log_error(&e);
             });
         tokio::spawn(f);
-        println!("Tick");
     }
 }

@@ -114,7 +114,7 @@ impl TransactionPublisher for TransactionPublisherImpl {
             self.get_channel()
                 .and_then(move |channel| {
                     let futures = txs.into_iter().map(move |tx| {
-                        let routing_key = format!("{}", tx.currency);
+                        let routing_key = format!("{}_transactions", tx.currency);
                         let payload = serde_json::to_string(&tx).unwrap().into_bytes();
                         channel.clone().basic_publish(
                             "blockchain_transactions",
