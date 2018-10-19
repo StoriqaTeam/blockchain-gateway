@@ -13,6 +13,9 @@ stq_transfer_topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4d
 bitcoin_interval_secs = 60
 ethereum_interval_secs = 10
 ethereum_number_of_tracked_confirmations = 15
+storiqa_interval_secs = 10
+storiqa_number_of_tracked_confirmations = 15
+
 
 [rabbit]
 url = "amqp://guest:guest@localhost:5672//?heartbeat=15&frame_max=131072"

@@ -58,7 +58,7 @@ impl StoriqaPollerService {
                 let from_block = self_clone.current_block.unwrap_or(current_block) - (number_of_tracked_confirmations as u64) + 1;
                 let to_block = current_block;
                 client
-                    .get_eth_transactions(from_block as u64, to_block as u64)
+                    .get_stq_transactions(from_block as u64, to_block as u64)
                     .map(move |txs| (txs, current_block))
                     .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             }).map(|(mut txs, current_block)| {

@@ -52,7 +52,10 @@ pub struct Poller {
     pub bitcoin_interval_secs: usize,
     pub ethereum_interval_secs: usize,
     pub ethereum_number_of_tracked_confirmations: usize,
+    pub storiqa_interval_secs: usize,
+    pub storiqa_number_of_tracked_confirmations: usize,
     pub ethereum_start_block: Option<u64>,
+    pub storiqa_start_block: Option<u64>,
     pub bitcoin_start_block: Option<u64>,
 }
 

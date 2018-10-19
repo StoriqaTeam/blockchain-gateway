@@ -55,7 +55,7 @@ use std::thread;
 use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
-use self::pollers::EthereumPollerService;
+use self::pollers::{EthereumPollerService, StoriqaPollerService};
 use self::utils::log_error;
 use config::Config;
 use prelude::*;
@@ -104,11 +104,19 @@ pub fn start_server() {
                 let ethereum_poller = EthereumPollerService::new(
                     Duration::from_secs(config_clone2.poller.ethereum_interval_secs as u64),
                     ethereum_client.clone(),
-                    publisher,
+                    publisher.clone(),
                     config_clone2.poller.ethereum_number_of_tracked_confirmations,
                     config_clone2.poller.ethereum_start_block,
                 );
+                let storiqa_poller = StoriqaPollerService::new(
+                    Duration::from_secs(config_clone2.poller.storiqa_interval_secs as u64),
+                    ethereum_client.clone(),
+                    publisher.clone(),
+                    config_clone2.poller.storiqa_number_of_tracked_confirmations,
+                    config_clone2.poller.storiqa_start_block,
+                );
                 ethereum_poller.start();
+                storiqa_poller.start();
             }).map_err(|e| {
                 log_error(&e);
             });
