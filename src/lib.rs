@@ -83,7 +83,7 @@ pub fn start_server() {
     let config_clone = config.clone();
     thread::spawn(move || {
         let mut core = tokio_core::reactor::Core::new().unwrap();
-        info!("Started creating rabbit connection pool");
+        debug!("Started creating rabbit connection pool");
         let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
         let config_clone2 = config_clone.clone();
         let f = RabbitConnectionManager::create(&config_clone)
@@ -92,7 +92,7 @@ pub fn start_server() {
                     .max_size(config_clone.rabbit.connection_pool_size as u32)
                     .build(rabbit_connection_manager)
                     .expect("Cannot build rabbit connection pool");
-                info!("Finished creating rabbit connection pool");
+                debug!("Finished creating rabbit connection pool");
                 let publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
                 publisher.init().map(|_| publisher)
             }).map(|publisher| {
@@ -107,7 +107,7 @@ pub fn start_server() {
             }).map_err(|e| {
                 log_error(&e);
             });
-        let _ = core.run(f);
+        let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
     });
 
     api::start_server(config);
