@@ -110,9 +110,9 @@ impl EthereumClientImpl {
                 .ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal))?,
         );
         Ok(BlockchainTransaction {
-            hash,
-            from,
-            to,
+            hash: (&hash[2..]).to_string(),
+            from: (&from[2..]).to_string(),
+            to: (&to[2..]).to_string(),
             block_number,
             currency: Currency::Eth,
             value,
