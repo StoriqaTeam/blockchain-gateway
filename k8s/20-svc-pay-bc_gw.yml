@@ -1,0 +1,14 @@
+kind: Service
+apiVersion: v1
+metadata:
+  name: blockchain-gateway
+  labels:
+    stack: payments
+spec:
+  selector:
+    stack: payments
+    app: blockchain-gateway
+  ports:
+  - name: main
+    protocol: TCP
+    port: 8000

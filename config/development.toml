@@ -1,9 +1,5 @@
 mode = "nightly"
 
-[server]
-host = "0.0.0.0"
-port = 8000
-
 [client]
 dns_threads = 4
 blockcypher_token = "5979b604fb114080b5761dba871009c0"
