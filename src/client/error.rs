@@ -41,6 +41,8 @@ pub enum ErrorContext {
     Json,
     #[fail(display = "http client error - parsing hex string")]
     Hex,
+    #[fail(display = "http client error - unexpected number of log topics in ethereum log receipt")]
+    Topics,
 }
 
 #[allow(dead_code)]

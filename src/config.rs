@@ -43,14 +43,19 @@ pub struct Client {
     pub blockcypher_token: String,
     pub infura_key: String,
     pub infura_secret: String,
+    pub stq_contract_address: String,
+    pub stq_transfer_topic: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Poller {
     pub bitcoin_interval_secs: usize,
     pub ethereum_interval_secs: usize,
-    pub number_of_tracked_confirmations: usize,
+    pub ethereum_number_of_tracked_confirmations: usize,
+    pub storiqa_interval_secs: usize,
+    pub storiqa_number_of_tracked_confirmations: usize,
     pub ethereum_start_block: Option<u64>,
+    pub storiqa_start_block: Option<u64>,
     pub bitcoin_start_block: Option<u64>,
 }
 

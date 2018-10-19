@@ -28,6 +28,7 @@ impl Display for RawEthereumTransaction {
 pub struct TxHash(String);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockchainTransaction {
     pub hash: String,
     pub from: String,

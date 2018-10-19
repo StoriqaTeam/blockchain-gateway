@@ -27,6 +27,7 @@ pub struct TransactionResponse {
     pub block_number: String,
     pub hash: String,
     pub from: String,
+    #[serde(default = "default_address")]
     pub to: String,
     pub value: String,
     pub gas: String,
@@ -36,4 +37,24 @@ pub struct TransactionResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostTransactionsResponse {
     pub result: TxHash,
+}
+
+#[derive(Deserialize)]
+pub struct StqResponse {
+    pub result: Vec<StqResponseItem>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StqResponseItem {
+    pub address: String,
+    pub topics: Vec<String>,
+    pub data: String,
+    pub block_number: String,
+    pub block_hash: String,
+    pub transaction_hash: String,
+}
+
+fn default_address() -> String {
+    "0x0".to_string()
 }
