@@ -1,3 +1,4 @@
+use std::fmt::{self, Debug};
 use std::io::Error as IoError;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
@@ -17,6 +18,7 @@ use tokio::timer::timeout::Timeout;
 
 use super::error::*;
 use config::Config;
+use log_error;
 
 pub type RabbitPool = Pool<RabbitConnectionManager>;
 
@@ -27,6 +29,12 @@ pub struct RabbitConnectionManager {
     connection_timeout: Duration,
     connection_options: ConnectionOptions,
     address: SocketAddr,
+}
+
+impl Debug for RabbitConnectionManager {
+    fn fmt(&self, f: &mut fmt::Formatter) -> Result<(), fmt::Error> {
+        f.write_str("RabbitConnectionManager")
+    }
 }
 
 struct RabbitHeartbeatHandle(Option<HeartbeatHandle>);
@@ -153,7 +161,7 @@ impl RabbitConnectionManager {
         let cli = self.client.lock().unwrap();
         let transport = cli.transport.lock().unwrap();
         match transport.conn.state {
-            ConnectionState::Connecting(_) | ConnectionState::Connected => true,
+            ConnectionState::Connecting(_) => true,
             _ => false,
         }
     }
@@ -170,22 +178,29 @@ impl ManageConnection for RabbitConnectionManager {
     type Error = Compat<Error>;
     fn connect(&self) -> Result<Self::Connection, Self::Error> {
         let cli = self.client.lock().unwrap();
-        cli.create_channel()
+        trace!("Creating rabbit channel...");
+        let ch = cli
+            .create_channel()
             .wait()
             .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))
-            .map_err(|e: Error| e.compat())
+            .map_err(|e: Error| e.compat());
+        trace!("Done");
+        ch
     }
     fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
         if self.is_broken_conn() {
             let e: Error = ectx!(err format_err!("Connection is broken"), ErrorKind::Internal);
+            log_error(&e);
             return Err(e.compat());
         }
         if self.is_connecting_conn() {
             let e: Error = ectx!(err format_err!("Connection is in process of connecting"), ErrorKind::Internal);
+            log_error(&e);
             return Err(e.compat());
         }
-        if self.is_connected_chan(conn) {
+        if !self.is_connected_chan(conn) {
             let e: Error = ectx!(err format_err!("Channel is not connected"), ErrorKind::Internal);
+            log_error(&e);
             return Err(e.compat());
         }
         Ok(())
