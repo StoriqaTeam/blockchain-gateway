@@ -12,10 +12,10 @@ pub struct BlockNumberResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct BlockByNumberResponse {
-    pub result: BlockResponse,
+    pub result: Option<BlockResponse>,
 }
 
-#[derive(Debug, Clone, Deserialize)]
+#[derive(Debug, Clone, Deserialize, Default)]
 pub struct BlockResponse {
     pub number: String,
     pub transactions: Vec<TransactionResponse>,
@@ -27,8 +27,7 @@ pub struct TransactionResponse {
     pub block_number: String,
     pub hash: String,
     pub from: String,
-    #[serde(default = "default_address")]
-    pub to: String,
+    pub to: Option<String>,
     pub value: String,
     pub gas: String,
     pub gas_price: String,
@@ -41,7 +40,7 @@ pub struct PostTransactionsResponse {
 
 #[derive(Deserialize)]
 pub struct StqResponse {
-    pub result: Vec<StqResponseItem>,
+    pub result: Option<Vec<StqResponseItem>>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -53,8 +52,4 @@ pub struct StqResponseItem {
     pub block_number: String,
     pub block_hash: String,
     pub transaction_hash: String,
-}
-
-fn default_address() -> String {
-    "0x0".to_string()
 }

@@ -82,6 +82,7 @@ impl EthereumClientImpl {
                 }).and_then(|resp| {
                     let txs: Result<Vec<BlockchainTransaction>, Error> = resp
                         .result
+                        .unwrap_or(Default::default())
                         .transactions
                         .iter()
                         .map(|tx_resp| EthereumClientImpl::eth_response_to_tx(tx_resp.clone()))
@@ -189,8 +190,12 @@ impl EthereumClient for EthereumClientImpl {
                 }).and_then(|string| {
                     serde_json::from_str::<StqResponse>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
                 }).and_then(|resp| {
-                    let res: Result<Vec<BlockchainTransaction>, Error> =
-                        resp.result.into_iter().map(EthereumClientImpl::stq_response_to_tx).collect();
+                    let res: Result<Vec<BlockchainTransaction>, Error> = resp
+                        .result
+                        .unwrap_or(vec![])
+                        .into_iter()
+                        .map(EthereumClientImpl::stq_response_to_tx)
+                        .collect();
                     res
                 }),
         )
