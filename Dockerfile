@@ -14,7 +14,7 @@ RUN mkdir -p /app/config \
 COPY target/$env/blockchain_gateway /app
 COPY config /app/config
 
-#USER app
+USER app
 WORKDIR /app
 
 ENV PATH=$PATH:/usr/local/cargo/bin/
