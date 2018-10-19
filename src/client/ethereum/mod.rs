@@ -112,7 +112,7 @@ impl EthereumClientImpl {
         Ok(BlockchainTransaction {
             hash: (&hash[2..]).to_string(),
             from: (&from[2..]).to_string(),
-            to: (&to.map(|t| &t[2..]).unwrap_or("0")).to_string(),
+            to: to.map(|t| (&t[2..]).to_string()).unwrap_or("0".to_string()),
             block_number,
             currency: Currency::Eth,
             value,
