@@ -5,7 +5,7 @@ use super::r2d2::RabbitConnectionManager;
 use super::r2d2::RabbitPool;
 use futures::future;
 use futures_cpupool::CpuPool;
-use lapin_futures::channel::Channel;
+use lapin_futures::channel::{Channel, ExchangeDeclareOptions, QueueDeclareOptions};
 use models::*;
 use prelude::*;
 use r2d2::PooledConnection;
@@ -39,22 +39,47 @@ impl TransactionPublisherImpl {
     }
 
     fn declare(&self, channel: &Channel<TcpStream>) -> impl Future<Item = (), Error = Error> {
-        let f1: Box<Future<Item = (), Error = StdIoError>> =
-            Box::new(channel.exchange_declare("blockchain_transactions", "direct", Default::default(), Default::default()));
+        let f1: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.exchange_declare(
+            "blockchain_transactions",
+            "direct",
+            ExchangeDeclareOptions {
+                durable: true,
+                ..Default::default()
+            },
+            Default::default(),
+        ));
         let f2: Box<Future<Item = (), Error = StdIoError>> = Box::new(
             channel
-                .queue_declare("btc_transactions", Default::default(), Default::default())
-                .map(|_| ()),
+                .queue_declare(
+                    "btc_transactions",
+                    QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
+                    Default::default(),
+                ).map(|_| ()),
         );
         let f3: Box<Future<Item = (), Error = StdIoError>> = Box::new(
             channel
-                .queue_declare("stq_transactions", Default::default(), Default::default())
-                .map(|_| ()),
+                .queue_declare(
+                    "stq_transactions",
+                    QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
+                    Default::default(),
+                ).map(|_| ()),
         );
         let f4: Box<Future<Item = (), Error = StdIoError>> = Box::new(
             channel
-                .queue_declare("eth_transactions", Default::default(), Default::default())
-                .map(|_| ()),
+                .queue_declare(
+                    "eth_transactions",
+                    QueueDeclareOptions {
+                        durable: true,
+                        ..Default::default()
+                    },
+                    Default::default(),
+                ).map(|_| ()),
         );
         let f5: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.queue_bind(
             "btc_transactions",
