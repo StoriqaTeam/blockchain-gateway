@@ -37,3 +37,19 @@ pub struct TransactionResponse {
 pub struct PostTransactionsResponse {
     pub result: TxHash,
 }
+
+#[derive(Deserialize)]
+pub struct StqResponse {
+    pub result: Vec<StqResponseItem>,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct StqResponseItem {
+    pub address: String,
+    pub topics: Vec<String>,
+    pub data: String,
+    pub block_number: String,
+    pub block_hash: String,
+    pub transaction_hash: String,
+}

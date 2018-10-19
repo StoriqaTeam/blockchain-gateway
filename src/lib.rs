@@ -80,6 +80,8 @@ pub fn start_server() {
         http_client.clone(),
         config.mode.clone(),
         config.client.infura_key.clone(),
+        config.client.stq_contract_address.clone(),
+        config.client.stq_transfer_topic.clone(),
     ));
 
     let config_clone = config.clone();
@@ -103,7 +105,7 @@ pub fn start_server() {
                     Duration::from_secs(config_clone2.poller.ethereum_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher,
-                    config_clone2.poller.number_of_tracked_confirmations,
+                    config_clone2.poller.ethereum_number_of_tracked_confirmations,
                     config_clone2.poller.ethereum_start_block,
                 );
                 ethereum_poller.start();
