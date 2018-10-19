@@ -55,7 +55,7 @@ impl EthereumPollerService {
             .get_current_block()
             .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             .and_then(move |current_block| {
-                let from_block = self_clone.current_block.unwrap_or(current_block) - (number_of_tracked_confirmations as u64);
+                let from_block = self_clone.current_block.unwrap_or(current_block) - (number_of_tracked_confirmations as u64) + 1;
                 let to_block = current_block;
                 client
                     .get_eth_transactions(from_block as u64, to_block as u64)
