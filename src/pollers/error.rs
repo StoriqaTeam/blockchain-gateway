@@ -13,14 +13,6 @@ pub struct Error {
 #[allow(dead_code)]
 #[derive(Clone, Debug, Fail)]
 pub enum ErrorKind {
-    #[fail(display = "service error - unauthorized")]
-    Unauthorized,
-    #[fail(display = "service error - malformed input")]
-    MalformedInput,
-    #[fail(display = "service error - not found")]
-    NotFound,
-    #[fail(display = "service error - invalid input, errors: {}", _0)]
-    InvalidInput(ValidationErrors),
     #[fail(display = "service error - internal error")]
     Internal,
 }
@@ -50,19 +42,3 @@ pub enum ErrorContext {
 }
 
 derive_error_impls!();
-
-impl From<ClientErrorKind> for ErrorKind {
-    fn from(e: ClientErrorKind) -> ErrorKind {
-        match e {
-            ClientErrorKind::BadGateway => ErrorKind::Internal,
-            ClientErrorKind::BadRequest => ErrorKind::MalformedInput,
-            ClientErrorKind::GatewayTimeout => ErrorKind::Internal,
-            ClientErrorKind::Internal => ErrorKind::Internal,
-            ClientErrorKind::InternalServer => ErrorKind::Internal,
-            ClientErrorKind::NotFound => ErrorKind::NotFound,
-            ClientErrorKind::Unauthorized => ErrorKind::Unauthorized,
-            ClientErrorKind::UnknownServerError => ErrorKind::Internal,
-            ClientErrorKind::UnprocessableEntity => ErrorKind::MalformedInput,
-        }
-    }
-}

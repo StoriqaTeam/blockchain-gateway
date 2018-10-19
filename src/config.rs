@@ -12,6 +12,8 @@ pub struct Config {
     pub client: Client,
     #[serde(deserialize_with = "deserialize_mode")]
     pub mode: Mode,
+    pub poller: Poller,
+    pub rabbit: Rabbit,
     pub sentry: Option<SentryConfig>,
 }
 
@@ -28,11 +30,28 @@ pub struct Database {
 }
 
 #[derive(Debug, Deserialize, Clone)]
+pub struct Rabbit {
+    pub url: String,
+    pub thread_pool_size: usize,
+    pub connection_timeout_secs: usize,
+    pub connection_pool_size: usize,
+}
+
+#[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub dns_threads: usize,
     pub blockcypher_token: String,
     pub infura_key: String,
     pub infura_secret: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+pub struct Poller {
+    pub bitcoin_interval_secs: usize,
+    pub ethereum_interval_secs: usize,
+    pub number_of_tracked_confirmations: usize,
+    pub ethereum_start_block: Option<u64>,
+    pub bitcoin_start_block: Option<u64>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
