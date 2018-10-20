@@ -40,6 +40,8 @@ services:
 
   rabbit:
     image: rabbitmq:3-management
+    volumes:
+      - ./rabbitmq:/etc/rabbitmq
     networks:
       - blockchain-gateway
     volumes:
