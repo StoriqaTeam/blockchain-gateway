@@ -3,6 +3,7 @@ version: "3"
 volumes:
   bundle-cache:
   blockchain-gateway-postgres-data:
+  blockchain-gateway-rabbit:
 networks:
   blockchain-gateway:
 
@@ -43,6 +44,8 @@ services:
       - ./rabbitmq:/etc/rabbitmq
     networks:
       - blockchain-gateway
+    volumes:
+      - blockchain-gateway-rabbit:/var/lib/rabbitmq
     ports:
       - 5672:5672
       - 15672:15672
