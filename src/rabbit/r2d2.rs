@@ -207,18 +207,13 @@ impl ManageConnection for RabbitConnectionManager {
             log_error(&e);
             if !self.is_connecting_conn() {
                 info!("Resetting tcp connection to rabbit...");
-                // {
-                //     let cli = self.client.lock().unwrap();
-                //     let mut transport = cli.transport.lock().unwrap();
-                //     transport.conn.state = ConnectionState::Connecting(ConnectingState::Initial);
-                // }
                 let self_clone = self.clone();
                 tokio::spawn(self.repair().map_err(move |e| {
-                    // {
-                    //     let cli = self_clone.client.lock().unwrap();
-                    //     let mut transport = cli.transport.lock().unwrap();
-                    //     transport.conn.state = ConnectionState::Error;
-                    // }
+                    {
+                        let cli = self_clone.client.lock().unwrap();
+                        let mut transport = cli.transport.lock().unwrap();
+                        transport.conn.state = ConnectionState::Error;
+                    }
                     log_error(&e);
                 }));
             }
@@ -229,12 +224,12 @@ impl ManageConnection for RabbitConnectionManager {
             log_error(&e);
             return Err(e.compat());
         }
-        if !self.is_connected_chan(conn) {
+        if !conn.is_connected() {
             let e: Error = ectx!(err format_err!("Channel is not connected"), ErrorKind::Internal);
             log_error(&e);
             return Err(e.compat());
         }
-        info!("Channel is ok");
+        trace!("Channel is ok");
         Ok(())
     }
     fn has_broken(&self, conn: &mut Self::Connection) -> bool {
