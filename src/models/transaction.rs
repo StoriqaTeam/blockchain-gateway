@@ -29,10 +29,17 @@ pub struct TxHash(String);
 
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct BlockchainTransactionEntry {
+    pub address: String,
+    pub value: Amount,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct BlockchainTransaction {
     pub hash: String,
-    pub from: String,
-    pub to: String,
+    pub from: Vec<BlockchainTransactionEntry>,
+    pub to: Vec<BlockchainTransactionEntry>,
     pub block_number: u64,
     pub currency: Currency,
     pub value: Amount,
