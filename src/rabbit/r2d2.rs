@@ -63,13 +63,13 @@ pub struct ConnectionHooks;
 impl CustomizeConnection<Channel<TcpStream>, Compat<Error>> for ConnectionHooks {
     #[allow(unused_variables)]
     fn on_acquire(&self, conn: &mut Channel<TcpStream>) -> Result<(), Compat<Error>> {
-        info!("Acquired rabbitmq channel");
+        trace!("Acquired rabbitmq channel");
         Ok(())
     }
 
     #[allow(unused_variables)]
     fn on_release(&self, conn: Channel<TcpStream>) {
-        info!("Released rabbitmq channel");
+        trace!("Released rabbitmq channel");
         thread::spawn(move || {
             let res = conn.close(0, "Released from pool").wait();
             if let Err(e) = res {
