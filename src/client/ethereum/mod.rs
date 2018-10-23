@@ -125,7 +125,6 @@ impl EthereumClientImpl {
             to,
             block_number,
             currency: Currency::Eth,
-            value,
             fee,
             confirmations: 0,
         })
@@ -157,7 +156,6 @@ impl EthereumClientImpl {
             to,
             block_number,
             currency: Currency::Stq,
-            value,
             fee: Amount::new(0),
             confirmations: 0,
             hash: log.transaction_hash[2..].to_string(),

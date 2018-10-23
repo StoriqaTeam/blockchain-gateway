@@ -42,7 +42,6 @@ pub struct BlockchainTransaction {
     pub to: Vec<BlockchainTransactionEntry>,
     pub block_number: u64,
     pub currency: Currency,
-    pub value: Amount,
     pub fee: Amount,
     pub confirmations: usize,
 }

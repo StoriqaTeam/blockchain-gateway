@@ -17,6 +17,25 @@ pub struct PostTransactionsResponse {
     pub hash: TxHash,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct GetTransactionResponse {
+    pub hash: String,
+    pub inputs: Vec<TransactionInputResponse>,
+    pub out: Vec<TransactionOutputResponse>,
+    pub block_height: u64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TransactionInputResponse {
+    pub prev_out: TransactionOutputResponse,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct TransactionOutputResponse {
+    pub addr: String,
+    pub value: Amount,
+}
+
 impl From<UtxoResponse> for Utxo {
     fn from(u: UtxoResponse) -> Self {
         Utxo {
