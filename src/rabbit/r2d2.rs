@@ -73,7 +73,7 @@ impl CustomizeConnection<Channel<TcpStream>, Compat<Error>> for ConnectionHooks 
         thread::spawn(move || {
             let res = conn.close(0, "Released from pool").wait();
             if let Err(e) = res {
-                let e: Error = ectx!(err format_err!("{}", e), ErrorContext::Heartbeat, ErrorKind::Internal);
+                let e: Error = ectx!(err format_err!("{}", e), ErrorContext::ChannelClose, ErrorKind::Internal);
                 log_error(&e);
             };
         });
