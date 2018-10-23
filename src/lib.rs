@@ -59,7 +59,7 @@ use self::pollers::{EthereumPollerService, StoriqaPollerService};
 use self::utils::log_error;
 use config::Config;
 use prelude::*;
-use rabbit::{RabbitConnectionManager, TransactionPublisherImpl};
+use rabbit::{ConnectionHooks, RabbitConnectionManager, TransactionPublisherImpl};
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -94,6 +94,7 @@ pub fn start_server() {
             .and_then(move |rabbit_connection_manager| {
                 let rabbit_connection_pool = r2d2::Pool::builder()
                     .max_size(config_clone.rabbit.connection_pool_size as u32)
+                    .connection_customizer(Box::new(ConnectionHooks))
                     .build(rabbit_connection_manager)
                     .expect("Cannot build rabbit connection pool");
                 debug!("Finished creating rabbit connection pool");
