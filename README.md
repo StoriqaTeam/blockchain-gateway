@@ -7,3 +7,5 @@ This microservice handles communication with Bitcoin and Ethereum nodes
 - RabbitMQ
 - Bitcoind
 - Parity Ethereum
+
+
