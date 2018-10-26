@@ -1,5 +1,6 @@
 mod responses;
 
+use std::collections::HashMap;
 use std::sync::Arc;
 
 use hyper::{Body, Request};
@@ -82,7 +83,11 @@ impl BitcoinClientImpl {
             })
     }
 
-    fn get_transaction_by_hash(&self, hash: String) -> impl Future<Item = BlockchainTransaction, Error = Error> + Send {
+    pub fn get_transaction_by_hash(
+        &self,
+        hash: String,
+        block_number: u64,
+    ) -> impl Future<Item = BlockchainTransaction, Error = Error> + Send {
         let params = json!({
             "jsonrpc": "2",
             "id": "1",
@@ -106,11 +111,74 @@ impl BitcoinClientImpl {
                         self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params)
                     }).collect();
                 future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
-            }).and_then(|(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp, in_txs_resp))
+            }).and_then(|(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp, in_txs_resp, block_number))
     }
 
-    fn rpc_tx_to_tx(tx: RpcRawTransactionResponse, in_txs: Vec<RpcRawTransactionResponse>) -> Result<BlockchainTransaction, Error> {
-        unimplemented!()
+    fn rpc_tx_to_tx(
+        tx: RpcRawTransactionResponse,
+        in_txs: Vec<RpcRawTransactionResponse>,
+        block_number: u64,
+    ) -> Result<BlockchainTransaction, Error> {
+        let RpcRawTransactionResponse {
+            txid: hash,
+            vin: vins,
+            vout: vouts,
+            confirmations,
+        } = tx;
+        let hash_clone = hash.clone();
+        let hash_clone2 = hash.clone();
+        let in_txs_hash: HashMap<String, RpcRawTransactionResponse> = in_txs.into_iter().map(|tx| (tx.txid.clone(), tx)).collect();
+        let from: Result<Vec<BlockchainTransactionEntry>, Error> = vins
+            .iter()
+            .map(|vin| {
+                let Vin { txid: hash, vout: index } = vin;
+                let out_tx = in_txs_hash
+                    .get(hash)
+                    .cloned()
+                    .ok_or(ectx!(try err ErrorContext::BitcoinRpcConversion, ErrorKind::Internal => hash_clone.clone()))?;
+                let out_out = out_tx
+                    .vout
+                    .get(*index)
+                    .ok_or(ectx!(try err ErrorContext::BitcoinRpcConversion, ErrorKind::Internal => hash_clone.clone()))?;
+                let value = Amount::new((out_out.value * 100_000_000f64) as u128);
+                Ok(BlockchainTransactionEntry {
+                    // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
+                    address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
+                    value,
+                })
+            }).collect();
+        let from = from?;
+        let to: Vec<_> = vouts
+            .iter()
+            .map(|vout| {
+                let Vout { script_pub_key, value } = vout;
+                let value = Amount::new((value * 100_000_000f64) as u128);
+                BlockchainTransactionEntry {
+                    // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
+                    address: script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
+                    value,
+                }
+            }).collect();
+        let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
+            acc.and_then(|acc_val| acc_val.checked_add(item.value))
+        });
+        let to_sum = to.iter().fold(Some(Amount::new(0)), |acc, item| {
+            acc.and_then(|acc_val| acc_val.checked_add(item.value))
+        });
+        let fee = match (from_sum, to_sum) {
+            (Some(fs), Some(ts)) => ts.checked_sub(fs),
+            _ => None,
+        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2))?;
+        let from: Vec<_> = from.into_iter().map(|from| from.address).collect();
+        Ok(BlockchainTransaction {
+            hash,
+            from,
+            to,
+            block_number,
+            currency: Currency::Btc,
+            fee,
+            confirmations,
+        })
     }
 
     fn btc_response_to_tx(resp: GetTransactionResponse) -> Result<BlockchainTransaction, Error> {
