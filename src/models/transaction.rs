@@ -38,11 +38,10 @@ pub struct BlockchainTransactionEntry {
 #[serde(rename_all = "camelCase")]
 pub struct BlockchainTransaction {
     pub hash: String,
-    pub from: Vec<BlockchainTransactionEntry>,
+    pub from: Vec<String>,
     pub to: Vec<BlockchainTransactionEntry>,
     pub block_number: u64,
     pub currency: Currency,
-    pub value: Amount,
     pub fee: Amount,
     pub confirmations: usize,
 }

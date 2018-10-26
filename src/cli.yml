@@ -1,9 +1,18 @@
 name: blockchain-gateway
 version: "0.1.0"
 author: "Alexey Karasev <karasev.alexey@gmail.com>"
-about: mocroservice that interacts with blockchain
+about: microservice that interacts with blockchain
 subcommands:
     - config:
         about: Prints current config
     - server:
         about: Starts server
+    - get_btc_transaction:
+        about: Fetches btc transaction from btc node
+        args:
+            - hash:
+                short: h
+                long: hash
+                help: transaction hash
+                required: true
+                takes_value: true

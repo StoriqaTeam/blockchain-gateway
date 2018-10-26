@@ -110,10 +110,7 @@ impl EthereumClientImpl {
             gas.checked_mul(gas_price)
                 .ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal))?,
         );
-        let from = vec![BlockchainTransactionEntry {
-            address: (&from[2..]).to_string(),
-            value,
-        }];
+        let from = vec![(&from[2..]).to_string()];
         let to_address = to.map(|t| (&t[2..]).to_string()).unwrap_or("0".to_string());
         let to = vec![BlockchainTransactionEntry {
             address: to_address,
@@ -125,7 +122,6 @@ impl EthereumClientImpl {
             to,
             block_number,
             currency: Currency::Eth,
-            value,
             fee,
             confirmations: 0,
         })
@@ -150,14 +146,13 @@ impl EthereumClientImpl {
             .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let block_number = EthereumClientImpl::parse_hex(log.block_number).map(|x| x as u64)?;
         let value = EthereumClientImpl::parse_hex(log.data).map(Amount::new)?;
-        let from = vec![BlockchainTransactionEntry { address: from, value }];
+        let from = vec![from];
         let to = vec![BlockchainTransactionEntry { address: to, value }];
         Ok(BlockchainTransaction {
             from,
             to,
             block_number,
             currency: Currency::Stq,
-            value,
             fee: Amount::new(0),
             confirmations: 0,
             hash: log.transaction_hash[2..].to_string(),

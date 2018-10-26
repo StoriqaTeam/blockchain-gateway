@@ -21,8 +21,8 @@ pub struct HttpClientImpl {
 
 impl HttpClientImpl {
     pub fn new(config: &Config) -> Self {
-        let mut connector = HttpsConnector::new(config.client.dns_threads).unwrap();
-        connector.https_only(true);
+        let connector = HttpsConnector::new(config.client.dns_threads).unwrap();
+        // connector.https_only(true);
         let cli = hyper::Client::builder().build(connector);
         Self { cli }
     }

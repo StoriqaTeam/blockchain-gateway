@@ -43,6 +43,8 @@ pub enum ErrorContext {
     Hex,
     #[fail(display = "http client error - unexpected number of log topics in ethereum log receipt")]
     Topics,
+    #[fail(display = "http client error - error converting rpc transaction into blockchain transaction")]
+    BitcoinRpcConversion,
 }
 
 #[allow(dead_code)]

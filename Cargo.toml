@@ -27,7 +27,7 @@ lapin-async = {version = "0.13", git = "https://github.com/StoriqaTeam/lapin", b
 lapin-futures = {version = "0.13.1", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
 serde = "1"
 serde_derive = "1"
-serde_json = "1"
+serde_json = { version = "1", features = ["arbitrary_precision"] }
 serde_qs = "0.4"
 validator = "0.8"
 validator_derive = "0.8"

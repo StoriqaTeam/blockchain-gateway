@@ -3,6 +3,9 @@ mode = "nightly"
 [client]
 dns_threads = 4
 blockcypher_token = "5979b604fb114080b5761dba871009c0"
+bitcoin_rpc_url = "http://localhost:18332"
+bitcoin_rpc_user = "xyz"
+bitcoin_rpc_password = "xyz"
 infura_key = "16a351590d9946989cdc80712e74f25e"
 infura_secret = "b18f14aa53094950a51597600e41c422"
 stq_contract_address = "0x1bf2092a42166b2ae19b7b23752e7d2dab5ba91a"
