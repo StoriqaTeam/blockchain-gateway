@@ -18,7 +18,7 @@ use utils::read_body;
 pub trait BitcoinClient: Send + Sync + 'static {
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
-    fn get_transactions(&self, from_block: u64, to_block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send>;
+    fn last_transactions(&self, block_count: u64) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -52,23 +52,6 @@ impl BitcoinClientImpl {
         }
     }
 
-    // fn get_transactions_by_hashes(
-    //     &self,
-    //     hash_stream: impl Stream<Item = String, Error = Error> + Send,
-    // ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
-    //     let self_clone = self.clone();
-    //     Box::new(
-    //         hash_stream
-    //             .chunks(BLOCK_TXS_LIMIT as usize)
-    //             .and_then(move |hashes| {
-    //                 let self_clone = self_clone.clone();
-    //                 let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction_by_hash(hash));
-    //                 future::join_all(fs)
-    //             }).map(|x| stream::iter_ok(x))
-    //             .flatten(),
-    //     )
-    // }
-
     fn get_rpc_response<T>(&self, params: &::serde_json::Value) -> impl Future<Item = T, Error = Error> + Send
     where
         for<'a> T: Send + 'static + ::serde::Deserialize<'a>,
@@ -95,13 +78,6 @@ impl BitcoinClientImpl {
             }).and_then(|string| {
                 serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
             })
-    }
-
-    pub fn last_transactions(&self, block_count: u64) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
-        let self_clone = self.clone();
-        self.last_blocks(block_count)
-            .map(move |block| self_clone.block_transactions(block))
-            .flatten()
     }
 
     fn block_transactions(&self, block: Block) -> impl Stream<Item = BlockchainTransaction, Error = Error> {
@@ -275,9 +251,13 @@ impl BitcoinClientImpl {
 }
 
 impl BitcoinClient for BitcoinClientImpl {
-    fn get_transactions(&self, from_block: u64, to_block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send> {
-        // (from_block..=to_block).iter().map(|block| )
-        unimplemented!()
+    fn last_transactions(&self, block_count: u64) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
+        let self_clone = self.clone();
+        Box::new(
+            self.last_blocks(block_count)
+                .map(move |block| self_clone.block_transactions(block))
+                .flatten(),
+        )
     }
 
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {

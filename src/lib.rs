@@ -55,7 +55,7 @@ use std::thread;
 use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
-use self::pollers::{EthereumPollerService, StoriqaPollerService};
+use self::pollers::{BitcoinPollerService, EthereumPollerService, StoriqaPollerService};
 use self::utils::log_error;
 use config::Config;
 use prelude::*;
@@ -119,6 +119,14 @@ pub fn start_server() {
                     config_clone2.poller.storiqa_number_of_tracked_confirmations,
                     config_clone2.poller.storiqa_start_block,
                 );
+                let bitcoin_poller = BitcoinPollerService::new(
+                    Duration::from_secs(config_clone2.poller.bitcoin_interval_secs as u64),
+                    bitcoin_client.clone(),
+                    publisher.clone(),
+                    config_clone2.poller.bitcoin_number_of_tracked_confirmations,
+                );
+
+                bitcoin_poller.start();
                 ethereum_poller.start();
                 storiqa_poller.start();
             }).map_err(|e| {
