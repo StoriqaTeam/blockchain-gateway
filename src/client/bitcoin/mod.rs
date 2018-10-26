@@ -177,9 +177,9 @@ impl BitcoinClientImpl {
             acc.and_then(|acc_val| acc_val.checked_add(item.value))
         });
         let fee = match (from_sum, to_sum) {
-            (Some(fs), Some(ts)) => ts.checked_sub(fs),
+            (Some(fs), Some(ts)) => fs.checked_sub(ts),
             _ => None,
-        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2))?;
+        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2, from_sum, to_sum))?;
         let from: Vec<_> = from.into_iter().map(|from| from.address).collect();
         Ok(BlockchainTransaction {
             hash,
