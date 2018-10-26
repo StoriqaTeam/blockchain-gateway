@@ -119,7 +119,7 @@ pub fn start_server() {
                     config_clone2.poller.storiqa_number_of_tracked_confirmations,
                     config_clone2.poller.storiqa_start_block,
                 );
-                // ethereum_poller.start();
+                ethereum_poller.start();
                 storiqa_poller.start();
             }).map_err(|e| {
                 log_error(&e);
