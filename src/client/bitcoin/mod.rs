@@ -27,17 +27,28 @@ pub struct BitcoinClientImpl {
     mode: Mode,
     blockcypher_token: String,
     bitcoin_rpc_url: String,
+    bitcoin_rpc_user: String,
+    bitcoin_rpc_password: String,
 }
 
 const BLOCK_TXS_LIMIT: u64 = 50;
 
 impl BitcoinClientImpl {
-    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String, mode: Mode, bitcoin_rpc_url: String) -> Self {
+    pub fn new(
+        http_client: Arc<HttpClient>,
+        blockcypher_token: String,
+        mode: Mode,
+        bitcoin_rpc_url: String,
+        bitcoin_rpc_user: String,
+        bitcoin_rpc_password: String,
+    ) -> Self {
         Self {
             http_client,
             blockcypher_token,
             mode,
             bitcoin_rpc_url,
+            bitcoin_rpc_user,
+            bitcoin_rpc_password,
         }
     }
 
@@ -64,11 +75,14 @@ impl BitcoinClientImpl {
     {
         let http_client = self.http_client.clone();
         let params_clone = params.clone();
+        let basic = ::base64::encode(&format!("{}:{}", self.bitcoin_rpc_user, self.bitcoin_rpc_password));
+        let basic = format!("Basic {}", basic);
         serde_json::to_string(params)
             .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => params))
             .and_then(|body| {
                 Request::builder()
                     .method("POST")
+                    .header("Authorization", basic)
                     .uri(self.bitcoin_rpc_url.clone())
                     .body(Body::from(body.clone()))
                     .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
@@ -99,6 +113,7 @@ impl BitcoinClientImpl {
             .and_then(move |resp| {
                 let self_clone = self_clone.clone();
                 let in_transaction_fs: Vec<_> = resp
+                    .result
                     .vin
                     .iter()
                     .map(move |vin| {
@@ -108,18 +123,14 @@ impl BitcoinClientImpl {
                             "method": "getrawtransaction",
                             "params": [vin.txid, true]
                         });
-                        self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params)
+                        self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params).map(|r| r.result)
                     }).collect();
                 future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
-            }).and_then(|(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp, in_txs_resp, block_number))
+            }).and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number))
     }
 
-    fn rpc_tx_to_tx(
-        tx: RpcRawTransactionResponse,
-        in_txs: Vec<RpcRawTransactionResponse>,
-        block_number: u64,
-    ) -> Result<BlockchainTransaction, Error> {
-        let RpcRawTransactionResponse {
+    fn rpc_tx_to_tx(tx: RpcRawTransaction, in_txs: Vec<RpcRawTransaction>, block_number: u64) -> Result<BlockchainTransaction, Error> {
+        let RpcRawTransaction {
             txid: hash,
             vin: vins,
             vout: vouts,
@@ -127,7 +138,7 @@ impl BitcoinClientImpl {
         } = tx;
         let hash_clone = hash.clone();
         let hash_clone2 = hash.clone();
-        let in_txs_hash: HashMap<String, RpcRawTransactionResponse> = in_txs.into_iter().map(|tx| (tx.txid.clone(), tx)).collect();
+        let in_txs_hash: HashMap<String, RpcRawTransaction> = in_txs.into_iter().map(|tx| (tx.txid.clone(), tx)).collect();
         let from: Result<Vec<BlockchainTransactionEntry>, Error> = vins
             .iter()
             .map(|vin| {

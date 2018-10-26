@@ -16,6 +16,9 @@ fn main() {
         blockchain_gateway_lib::print_config();
     } else if let Some(_) = matches.subcommand_matches("server") {
         blockchain_gateway_lib::start_server();
+    } else if let Some(matches) = matches.subcommand_matches("get_btc_transaction") {
+        let hash = matches.value_of("hash").unwrap();
+        blockchain_gateway_lib::get_btc_transaction(&hash);
     } else {
         let _ = app.print_help();
         println!("\n")

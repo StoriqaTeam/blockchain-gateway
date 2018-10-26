@@ -78,6 +78,8 @@ impl Service for ApiService {
                         config.client.blockcypher_token.clone(),
                         config.mode.clone(),
                         config.client.bitcoin_rpc_url.clone(),
+                        config.client.bitcoin_rpc_user.clone(),
+                        config.client.bitcoin_rpc_password.clone(),
                     ));
                     let ethereum_client = Arc::new(EthereumClientImpl::new(
                         http_client.clone(),

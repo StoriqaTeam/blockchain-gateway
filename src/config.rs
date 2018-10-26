@@ -46,6 +46,8 @@ pub struct Client {
     pub stq_contract_address: String,
     pub stq_transfer_topic: String,
     pub bitcoin_rpc_url: String,
+    pub bitcoin_rpc_user: String,
+    pub bitcoin_rpc_password: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]

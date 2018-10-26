@@ -38,6 +38,11 @@ pub struct TransactionOutputResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct RpcRawTransactionResponse {
+    pub result: RpcRawTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RpcRawTransaction {
     pub txid: String,
     pub vin: Vec<Vin>,
     pub vout: Vec<Vout>,
