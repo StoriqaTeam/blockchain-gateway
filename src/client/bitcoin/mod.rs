@@ -31,7 +31,7 @@ pub struct BitcoinClientImpl {
     bitcoin_rpc_password: String,
 }
 
-const BLOCK_TXS_LIMIT: u64 = 50;
+const BLOCK_TXS_LIMIT: u64 = 10;
 
 impl BitcoinClientImpl {
     pub fn new(
@@ -111,7 +111,8 @@ impl BitcoinClientImpl {
             height: block_number,
             ..
         } = block;
-        let hash_stream = stream::iter_ok(transactions.into_iter());
+        // skipping coinbase transaction
+        let hash_stream = stream::iter_ok(transactions.into_iter().skip(1));
         hash_stream
             .chunks(BLOCK_TXS_LIMIT as usize)
             .and_then(move |hashes| {

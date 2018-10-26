@@ -90,6 +90,7 @@ pub struct Vout {
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct ScriptPubKey {
+    #[serde(default)]
     pub addresses: Vec<String>,
     #[serde(rename = "type")]
     pub typ: String,
