@@ -16,3 +16,12 @@ subcommands:
                 help: transaction hash
                 required: true
                 takes_value: true
+    - get_btc_block:
+        about: Fetches btc block from btc node
+        args:
+            - hash:
+                short: h
+                long: hash
+                help: block hash
+                required: true
+                takes_value: true

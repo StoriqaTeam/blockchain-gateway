@@ -133,15 +133,7 @@ pub fn start_server() {
 
 pub fn get_btc_transaction(hash: &str) {
     let config = get_config();
-    let http_client = Arc::new(HttpClientImpl::new(&config));
-    let bitcoin_client = Arc::new(BitcoinClientImpl::new(
-        http_client.clone(),
-        config.client.blockcypher_token.clone(),
-        config.mode.clone(),
-        config.client.bitcoin_rpc_url.clone(),
-        config.client.bitcoin_rpc_user.clone(),
-        config.client.bitcoin_rpc_password.clone(),
-    ));
+    let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
         .get_transaction_by_hash(hash.to_string(), 0)
@@ -153,6 +145,34 @@ pub fn get_btc_transaction(hash: &str) {
 
     let mut core = ::tokio_core::reactor::Core::new().unwrap();
     let _ = core.run(fut);
+}
+
+pub fn get_btc_block(hash: &str) {
+    let config = get_config();
+    let bitcoin_client = create_btc_client(&config);
+
+    let fut = bitcoin_client
+        .get_block_by_hash(hash.to_string())
+        .map(|block| {
+            println!("{:#?}", block);
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+fn create_btc_client(config: &Config) -> BitcoinClientImpl {
+    let http_client = Arc::new(HttpClientImpl::new(config));
+    BitcoinClientImpl::new(
+        http_client.clone(),
+        config.client.blockcypher_token.clone(),
+        config.mode.clone(),
+        config.client.bitcoin_rpc_url.clone(),
+        config.client.bitcoin_rpc_user.clone(),
+        config.client.bitcoin_rpc_password.clone(),
+    )
 }
 
 fn get_config() -> Config {

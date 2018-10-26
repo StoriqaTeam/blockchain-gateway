@@ -19,6 +19,9 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("get_btc_transaction") {
         let hash = matches.value_of("hash").unwrap();
         blockchain_gateway_lib::get_btc_transaction(&hash);
+    } else if let Some(matches) = matches.subcommand_matches("get_btc_block") {
+        let hash = matches.value_of("hash").unwrap();
+        blockchain_gateway_lib::get_btc_block(&hash);
     } else {
         let _ = app.print_help();
         println!("\n")

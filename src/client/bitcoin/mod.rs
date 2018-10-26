@@ -54,7 +54,7 @@ impl BitcoinClientImpl {
 
     // fn get_transactions_by_hashes(
     //     &self,
-    //     hash_stream: Box<Stream<Item = String, Error = Error> + Send>,
+    //     hash_stream: impl Stream<Item = String, Error = Error> + Send,
     // ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
     //     let self_clone = self.clone();
     //     Box::new(
@@ -95,6 +95,16 @@ impl BitcoinClientImpl {
             }).and_then(|string| {
                 serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
             })
+    }
+
+    pub fn get_block_by_hash(&self, hash: String) -> impl Future<Item = Block, Error = Error> {
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getblock",
+            "params": [hash]
+        });
+        self.get_rpc_response::<RpcBlockResponse>(&params).map(|r| r.result)
     }
 
     pub fn get_transaction_by_hash(
@@ -169,8 +179,6 @@ impl BitcoinClientImpl {
                     value: *value,
                 }
             }).collect();
-        debug!("from {:#?}", from);
-        debug!("to {:#?}", to);
         let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
             acc.and_then(|acc_val| acc_val.checked_add(item.value))
         });
@@ -190,53 +198,6 @@ impl BitcoinClientImpl {
             currency: Currency::Btc,
             fee,
             confirmations,
-        })
-    }
-
-    fn btc_response_to_tx(resp: GetTransactionResponse) -> Result<BlockchainTransaction, Error> {
-        let resp_clone = resp.clone();
-        let GetTransactionResponse {
-            hash,
-            inputs,
-            out,
-            block_height,
-        } = resp;
-        let from: Vec<_> = inputs
-            .into_iter()
-            .map(|entry_resp| BlockchainTransactionEntry {
-                address: entry_resp.prev_out.addr,
-                value: entry_resp.prev_out.value,
-            }).collect();
-        let to: Vec<_> = out
-            .into_iter()
-            .map(|entry_resp| BlockchainTransactionEntry {
-                address: entry_resp.addr,
-                value: entry_resp.value,
-            }).collect();
-
-        // let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
-        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        // });
-        // let to_sum = to.iter().fold(Some(Amount::new(0)), |acc, item| {
-        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        // });
-        // let fee = match (from_sum, to_sum) {
-        //     (Some(fs), Some(ts)) => ts.checked_sub(fs),
-        //     _ => None,
-        // }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => resp_clone))?;
-
-        // Todo
-        let fee = Amount::new(0);
-        let from: Vec<_> = from.into_iter().map(|x| x.address).collect();
-
-        Ok(BlockchainTransaction {
-            hash,
-            from,
-            to,
-            block_number: block_height,
-            currency: Currency::Btc,
-            fee,
-            confirmations: 0,
         })
     }
 
