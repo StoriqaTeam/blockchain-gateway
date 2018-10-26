@@ -36,6 +36,37 @@ pub struct TransactionOutputResponse {
     pub value: Amount,
 }
 
+#[derive(Debug, Clone, Deserialize)]
+pub struct RpcRawTransactionResponse {
+    pub txid: String,
+    pub vin: Vec<Vin>,
+    pub vout: Vec<Vout>,
+    pub confirmations: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct Vin {
+    // utxo transaction
+    pub txid: String,
+    // utxo index
+    pub vout: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct Vout {
+    pub script_pub_key: ScriptPubKey,
+    pub value: f64,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct ScriptPubKey {
+    pub addresses: Vec<String>,
+    #[serde(rename = "type")]
+    pub typ: String,
+}
+
 impl From<UtxoResponse> for Utxo {
     fn from(u: UtxoResponse) -> Self {
         Utxo {

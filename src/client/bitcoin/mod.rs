@@ -40,48 +40,77 @@ impl BitcoinClientImpl {
         }
     }
 
-    fn get_transactions_by_hashes(
-        &self,
-        hash_stream: Box<Stream<Item = String, Error = Error> + Send>,
-    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
-        let self_clone = self.clone();
-        Box::new(
-            hash_stream
-                .chunks(BLOCK_TXS_LIMIT as usize)
-                .and_then(move |hashes| {
-                    let self_clone = self_clone.clone();
-                    let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction_by_hash(hash));
-                    future::join_all(fs)
-                }).map(|x| stream::iter_ok(x))
-                .flatten(),
-        )
+    // fn get_transactions_by_hashes(
+    //     &self,
+    //     hash_stream: Box<Stream<Item = String, Error = Error> + Send>,
+    // ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
+    //     let self_clone = self.clone();
+    //     Box::new(
+    //         hash_stream
+    //             .chunks(BLOCK_TXS_LIMIT as usize)
+    //             .and_then(move |hashes| {
+    //                 let self_clone = self_clone.clone();
+    //                 let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction_by_hash(hash));
+    //                 future::join_all(fs)
+    //             }).map(|x| stream::iter_ok(x))
+    //             .flatten(),
+    //     )
+    // }
+
+    fn get_rpc_response<T>(&self, params: &::serde_json::Value) -> impl Future<Item = T, Error = Error> + Send
+    where
+        for<'a> T: Send + 'static + ::serde::Deserialize<'a>,
+    {
+        let http_client = self.http_client.clone();
+        let params_clone = params.clone();
+        serde_json::to_string(params)
+            .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => params))
+            .and_then(|body| {
+                Request::builder()
+                    .method("POST")
+                    .uri(self.bitcoin_rpc_url.clone())
+                    .body(Body::from(body.clone()))
+                    .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
+            }).into_future()
+            .and_then(move |request| http_client.request(request))
+            .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => params_clone)))
+            .and_then(|bytes| {
+                let bytes_clone = bytes.clone();
+                String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
+            }).and_then(|string| {
+                serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
+            })
     }
 
-    fn get_transaction_by_hash(&self, hash: String) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send> {
-        let hash_clone = hash.clone();
-        let hash_clone2 = hash.clone();
-        let http_client = self.http_client.clone();
-        let uri_base = match self.mode {
-            Mode::Production => "https://blockchain.info",
-            _ => "https://testnet.blockchain.info",
-        };
-        Box::new(
-            Request::builder()
-                .method("GET")
-                .uri(format!("{}/rawtx/{}", uri_base, hash))
-                .body(Body::empty())
-                .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => hash_clone))
-                .into_future()
-                .and_then(move |request| http_client.request(request))
-                .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => hash_clone2)))
-                .and_then(|bytes| {
-                    let bytes_clone = bytes.clone();
-                    String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
-                }).and_then(|string| {
-                    serde_json::from_str::<GetTransactionResponse>(&string)
-                        .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
-                }).and_then(BitcoinClientImpl::btc_response_to_tx),
-        )
+    fn get_transaction_by_hash(&self, hash: String) -> impl Future<Item = BlockchainTransaction, Error = Error> + Send {
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getrawtransaction",
+            "params": [hash, true]
+        });
+        let self_clone = self.clone();
+        self.get_rpc_response::<RpcRawTransactionResponse>(&params)
+            .and_then(move |resp| {
+                let self_clone = self_clone.clone();
+                let in_transaction_fs: Vec<_> = resp
+                    .vin
+                    .iter()
+                    .map(move |vin| {
+                        let params = json!({
+                            "jsonrpc": "2",
+                            "id": "1",
+                            "method": "getrawtransaction",
+                            "params": [vin.txid, true]
+                        });
+                        self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params)
+                    }).collect();
+                future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
+            }).and_then(|(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp, in_txs_resp))
+    }
+
+    fn rpc_tx_to_tx(tx: RpcRawTransactionResponse, in_txs: Vec<RpcRawTransactionResponse>) -> Result<BlockchainTransaction, Error> {
+        unimplemented!()
     }
 
     fn btc_response_to_tx(resp: GetTransactionResponse) -> Result<BlockchainTransaction, Error> {
