@@ -150,7 +150,9 @@ pub fn get_btc_transaction(hash: &str) {
         }).map_err(|e| {
             log_error(&e);
         });
-    hyper::rt::run(fut);
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
 }
 
 fn get_config() -> Config {

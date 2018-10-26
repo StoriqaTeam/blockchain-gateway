@@ -1,4 +1,7 @@
+use std::str::FromStr;
+
 use models::*;
+use serde::{Deserialize, Deserializer};
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct UtxosResponse {
@@ -61,7 +64,8 @@ pub struct Vin {
 #[serde(rename_all = "camelCase")]
 pub struct Vout {
     pub script_pub_key: ScriptPubKey,
-    pub value: f64,
+    #[serde(deserialize_with = "de_bitcoin_decimal")]
+    pub value: Amount,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -80,4 +84,15 @@ impl From<UtxoResponse> for Utxo {
             value: u.value,
         }
     }
+}
+
+fn de_bitcoin_decimal<'de, D>(deserializer: D) -> Result<Amount, D::Error>
+where
+    D: Deserializer<'de>,
+{
+    let num: ::serde_json::Number = Deserialize::deserialize(deserializer)?;
+    let s = num.to_string();
+    let s = s.replace(".", "");
+    let val: u128 = u128::from_str_radix(&s, 10).map_err(::serde::de::Error::custom)?;
+    Ok(Amount::new(val))
 }

@@ -151,7 +151,7 @@ impl BitcoinClientImpl {
                     .vout
                     .get(*index)
                     .ok_or(ectx!(try err ErrorContext::BitcoinRpcConversion, ErrorKind::Internal => hash_clone.clone()))?;
-                let value = Amount::new((out_out.value * 100_000_000f64) as u128);
+                let value = out_out.value;
                 Ok(BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
                     address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
@@ -163,13 +163,14 @@ impl BitcoinClientImpl {
             .iter()
             .map(|vout| {
                 let Vout { script_pub_key, value } = vout;
-                let value = Amount::new((value * 100_000_000f64) as u128);
                 BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
                     address: script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
-                    value,
+                    value: *value,
                 }
             }).collect();
+        debug!("from {:#?}", from);
+        debug!("to {:#?}", to);
         let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
             acc.and_then(|acc_val| acc_val.checked_add(item.value))
         });
