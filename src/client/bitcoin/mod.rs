@@ -25,16 +25,18 @@ pub struct BitcoinClientImpl {
     http_client: Arc<HttpClient>,
     mode: Mode,
     blockcypher_token: String,
+    bitcoin_rpc_url: String,
 }
 
 const BLOCK_TXS_LIMIT: u64 = 50;
 
 impl BitcoinClientImpl {
-    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String, mode: Mode) -> Self {
+    pub fn new(http_client: Arc<HttpClient>, blockcypher_token: String, mode: Mode, bitcoin_rpc_url: String) -> Self {
         Self {
             http_client,
             blockcypher_token,
             mode,
+            bitcoin_rpc_url,
         }
     }
 
@@ -135,16 +137,13 @@ impl BitcoinClientImpl {
     }
 
     fn get_transaction_hashes_by_block(&self, block: u64) -> Box<Future<Item = Vec<String>, Error = Error> + Send> {
-        Box::new(
-            
-        )
         unimplemented!()
     }
 }
 
 impl BitcoinClient for BitcoinClientImpl {
     fn get_transactions(&self, from_block: u64, to_block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send> {
-        (from_block..=to_block).iter().map(|block| )
+        // (from_block..=to_block).iter().map(|block| )
         unimplemented!()
     }
 
