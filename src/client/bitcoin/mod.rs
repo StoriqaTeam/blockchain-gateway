@@ -105,16 +105,20 @@ impl BitcoinClientImpl {
                 value: entry_resp.value,
             }).collect();
 
-        let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
-            acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        });
-        let to_sum = to.iter().fold(Some(Amount::new(0)), |acc, item| {
-            acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        });
-        let fee = match (from_sum, to_sum) {
-            (Some(fs), Some(ts)) => ts.checked_sub(fs),
-            _ => None,
-        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => resp_clone))?;
+        // let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
+        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
+        // });
+        // let to_sum = to.iter().fold(Some(Amount::new(0)), |acc, item| {
+        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
+        // });
+        // let fee = match (from_sum, to_sum) {
+        //     (Some(fs), Some(ts)) => ts.checked_sub(fs),
+        //     _ => None,
+        // }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => resp_clone))?;
+
+        // Todo
+        let fee = Amount::new(0);
+        let from: Vec<_> = from.into_iter().map(|x| x.address).collect();
 
         Ok(BlockchainTransaction {
             hash,
