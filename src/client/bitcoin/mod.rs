@@ -97,7 +97,42 @@ impl BitcoinClientImpl {
             })
     }
 
-    pub fn get_block_by_hash(&self, hash: String) -> impl Future<Item = Block, Error = Error> {
+    // pub fn transactions_from_last_blocks(&self, block_count: u64) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
+
+    // }
+
+    pub fn last_blocks(&self, block_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
+        let self_clone = self.clone();
+        self.get_best_block_hash()
+            .into_stream()
+            .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, block_count))
+            .flatten()
+    }
+
+    fn last_blocks_from_hash(&self, block_hash: String, block_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
+        let self_clone = self.clone();
+        stream::unfold((block_count, block_hash), move |(blocks_left, current_hash)| {
+            if blocks_left == 0 {
+                return None;
+            }
+            let f = self_clone
+                .get_block_by_hash(current_hash)
+                .map(move |block| (block.clone(), (blocks_left - 1, block.previousblockhash.clone())));
+            Some(f)
+        })
+    }
+
+    fn get_best_block_hash(&self) -> impl Future<Item = String, Error = Error> + Send {
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getbestblockhash",
+            "params": []
+        });
+        self.get_rpc_response::<RpcBestBlockResponse>(&params).map(|r| r.result)
+    }
+
+    pub fn get_block_by_hash(&self, hash: String) -> impl Future<Item = Block, Error = Error> + Send {
         let params = json!({
             "jsonrpc": "2",
             "id": "1",

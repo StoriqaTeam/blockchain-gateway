@@ -163,6 +163,23 @@ pub fn get_btc_block(hash: &str) {
     let _ = core.run(fut);
 }
 
+pub fn get_btc_last_blocks(number: u64) {
+    let config = get_config();
+    let bitcoin_client = create_btc_client(&config);
+
+    let fut = bitcoin_client
+        .last_blocks(number)
+        .for_each(|block| {
+            println!("{:#?}", block);
+            Ok(())
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
 fn create_btc_client(config: &Config) -> BitcoinClientImpl {
     let http_client = Arc::new(HttpClientImpl::new(config));
     BitcoinClientImpl::new(

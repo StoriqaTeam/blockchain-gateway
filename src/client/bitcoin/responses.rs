@@ -47,6 +47,7 @@ pub struct RpcBlockResponse {
 #[derive(Debug, Clone, Deserialize)]
 pub struct Block {
     pub hash: String,
+    pub previousblockhash: String,
     pub tx: Vec<String>,
     pub height: u64,
     pub confirmations: usize,
@@ -55,6 +56,11 @@ pub struct Block {
 #[derive(Debug, Clone, Deserialize)]
 pub struct RpcRawTransactionResponse {
     pub result: RpcRawTransaction,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct RpcBestBlockResponse {
+    pub result: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
