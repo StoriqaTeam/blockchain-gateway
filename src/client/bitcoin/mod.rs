@@ -97,9 +97,32 @@ impl BitcoinClientImpl {
             })
     }
 
-    // pub fn transactions_from_last_blocks(&self, block_count: u64) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
+    pub fn last_transactions(&self, block_count: u64) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
+        let self_clone = self.clone();
+        self.last_blocks(block_count)
+            .map(move |block| self_clone.block_transactions(block))
+            .flatten()
+    }
 
-    // }
+    fn block_transactions(&self, block: Block) -> impl Stream<Item = BlockchainTransaction, Error = Error> {
+        let self_clone = self.clone();
+        let Block {
+            tx: transactions,
+            height: block_number,
+            ..
+        } = block;
+        let hash_stream = stream::iter_ok(transactions.into_iter());
+        hash_stream
+            .chunks(BLOCK_TXS_LIMIT as usize)
+            .and_then(move |hashes| {
+                let self_clone = self_clone.clone();
+                let fs = hashes
+                    .into_iter()
+                    .map(move |hash| self_clone.get_transaction_by_hash(hash, block_number));
+                future::join_all(fs)
+            }).map(|x| stream::iter_ok(x))
+            .flatten()
+    }
 
     pub fn last_blocks(&self, block_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
         let self_clone = self.clone();

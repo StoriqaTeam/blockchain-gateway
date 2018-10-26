@@ -34,3 +34,12 @@ subcommands:
                 help: number of blocks to get
                 required: true
                 takes_value: true
+    - get_btc_last_transactions:
+        about: Fetches last blocks from btc blockchain
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks for transactions
+                required: true
+                takes_value: true

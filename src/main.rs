@@ -26,6 +26,10 @@ fn main() {
         let param = matches.value_of("number").unwrap();
         let number: u64 = param.parse().unwrap();
         blockchain_gateway_lib::get_btc_last_blocks(number);
+    } else if let Some(matches) = matches.subcommand_matches("get_btc_last_transactions") {
+        let param = matches.value_of("number").unwrap();
+        let number: u64 = param.parse().unwrap();
+        blockchain_gateway_lib::get_btc_last_transactions(number);
     } else {
         let _ = app.print_help();
         println!("\n")
