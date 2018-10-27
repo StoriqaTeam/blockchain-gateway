@@ -21,11 +21,11 @@ pub fn get_nonce(ctx: &Context, address: EthereumAddress) -> ControllerFuture {
 }
 
 pub fn post_ethereum_transactions(ctx: &Context) -> ControllerFuture {
-    let bitcoin_service = ctx.bitcoin_service.clone();
+    let ethereum_service = ctx.ethereum_service.clone();
     let body = ctx.body.clone();
     Box::new(
-        parse_body::<PostBitcoinTransactionRequest>(ctx.body.clone())
-            .and_then(move |input| bitcoin_service.send_raw_tx(input.raw).map_err(ectx!(convert => body)))
+        parse_body::<PostEthereumTransactionRequest>(ctx.body.clone())
+            .and_then(move |input| ethereum_service.send_raw_tx(input.raw).map_err(ectx!(convert => body)))
             .and_then(|hash| {
                 let resp = TxHashResponse { tx_hash: hash };
                 response_with_model(&resp)
