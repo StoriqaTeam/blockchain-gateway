@@ -5,13 +5,9 @@ extern crate failure;
 #[macro_use]
 extern crate serde_derive;
 #[macro_use]
-extern crate lazy_static;
-#[macro_use]
 extern crate log;
 #[macro_use]
 extern crate http_router;
-#[macro_use]
-extern crate validator_derive;
 #[macro_use]
 extern crate sentry;
 
@@ -28,14 +24,13 @@ extern crate serde;
 #[macro_use]
 extern crate serde_json;
 extern crate lapin_async;
+extern crate lapin_futures;
 extern crate r2d2;
 extern crate serde_qs;
+extern crate tokio;
 extern crate tokio_core;
 extern crate uuid;
 extern crate validator;
-#[macro_use]
-extern crate lapin_futures;
-extern crate tokio;
 
 #[macro_use]
 mod macros;
@@ -54,7 +49,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
+use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClientImpl, HttpClientImpl};
 use self::pollers::{BitcoinPollerService, EthereumPollerService, StoriqaPollerService};
 use self::utils::log_error;
 use config::Config;

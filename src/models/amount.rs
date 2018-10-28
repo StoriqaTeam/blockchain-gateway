@@ -1,8 +1,6 @@
 use std::cmp::{Ord, Ordering};
-use std::error::Error as StdError;
 use std::fmt;
 use std::fmt::LowerHex;
-use std::io::prelude::*;
 use std::mem::transmute;
 
 /// This is a wrapper for monetary amounts in blockchain.
@@ -27,10 +25,12 @@ impl Amount {
         self.0.checked_sub(other.0).map(Amount)
     }
 
+    #[allow(dead_code)]
     pub fn inner(&self) -> u128 {
         self.0
     }
 
+    #[allow(dead_code)]
     pub fn u64(&self) -> Option<u64> {
         if self.0 <= u64::max_value() as u128 {
             Some(self.0 as u64)
@@ -39,6 +39,7 @@ impl Amount {
         }
     }
 
+    #[allow(dead_code)]
     pub fn bytes(&self) -> Vec<u8> {
         let bytes: [u8; 16] = unsafe { transmute(self.0.to_be()) };
         bytes.into_iter().cloned().collect()
@@ -70,7 +71,6 @@ impl LowerHex for Amount {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use serde_json;
 
     fn test_serde_conversions() {
         let cases = [
@@ -100,7 +100,7 @@ mod tests {
         ];
         for case in cases.into_iter() {
             let (string, number) = case.clone();
-            let parsed: Amount = serde_json::from_str(string).unwrap();
+            let parsed: Amount = ::serde_json::from_str(string).unwrap();
             assert_eq!(parsed, Amount(number));
         }
     }
@@ -126,7 +126,7 @@ mod tests {
             "-170141183460469231731687303715884105729",
         ];
         for case in error_cases.into_iter() {
-            let parsed: Result<Amount, _> = serde_json::from_str(case);
+            let parsed: Result<Amount, _> = ::serde_json::from_str(case);
             assert_eq!(parsed.is_err(), true, "Case: {}", case);
         }
     }

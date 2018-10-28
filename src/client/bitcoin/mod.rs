@@ -260,7 +260,6 @@ impl BitcoinClient for BitcoinClientImpl {
     }
 
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {
-        let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
         let uri_base = match self.mode {
@@ -286,7 +285,6 @@ impl BitcoinClient for BitcoinClientImpl {
     }
 
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
-        let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();
         let uri_net_name = match self.mode {

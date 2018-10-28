@@ -1,5 +1,4 @@
 use std::fmt::{self, Debug};
-use std::io::Error as IoError;
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
 use std::thread;
@@ -9,12 +8,11 @@ use failure;
 use failure::Compat;
 use futures::future::Either;
 use lapin_async::connection::{ConnectingState, ConnectionState};
-use lapin_futures::channel::{Channel, ConfirmSelectOptions};
+use lapin_futures::channel::Channel;
 use lapin_futures::client::{Client, ConnectionOptions, HeartbeatHandle};
 use prelude::*;
 use r2d2::{CustomizeConnection, ManageConnection, Pool};
 use regex::Regex;
-use tokio;
 use tokio::net::tcp::TcpStream;
 use tokio::timer::timeout::Timeout;
 use tokio_core::reactor::Core;
@@ -185,7 +183,6 @@ impl RabbitConnectionManager {
         address: SocketAddr,
         options: ConnectionOptions,
     ) -> impl Future<Item = (Client<TcpStream>, RabbitHeartbeatHandle), Error = Error> {
-        let address_clone = address.clone();
         let address_clone2 = address.clone();
         let address_clone3 = address.clone();
         info!("Connecting to rabbit at `{}`", address);

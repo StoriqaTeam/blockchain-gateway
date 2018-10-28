@@ -3,7 +3,6 @@ use std::io::Error as StdIoError;
 use super::error::*;
 use super::r2d2::RabbitConnectionManager;
 use super::r2d2::RabbitPool;
-use config::Config;
 use futures::future;
 use futures_cpupool::CpuPool;
 use lapin_futures::channel::{Channel, ExchangeDeclareOptions, QueueDeclareOptions};
@@ -142,7 +141,6 @@ impl TransactionPublisherImpl {
 
 impl TransactionPublisher for TransactionPublisherImpl {
     fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error> + Send> {
-        let self_clone = self.clone();
         Box::new(
             self.get_channel()
                 .and_then(move |channel| {

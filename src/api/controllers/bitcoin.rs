@@ -1,4 +1,3 @@
-use super::super::error::*;
 use super::super::requests::*;
 use super::super::responses::TxHashResponse;
 use super::super::utils::{parse_body, response_with_model};

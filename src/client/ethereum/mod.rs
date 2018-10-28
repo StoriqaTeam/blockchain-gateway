@@ -242,7 +242,6 @@ impl EthereumClient for EthereumClientImpl {
         )
     }
     fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send> {
-        let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
         let address_str = format!("0x{}", address);
@@ -274,7 +273,6 @@ impl EthereumClient for EthereumClientImpl {
     }
 
     fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
-        let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();
         let tx_str = format!("0x{}", tx);
