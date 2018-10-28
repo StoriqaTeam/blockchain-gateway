@@ -50,6 +50,18 @@ pub struct StqResponseItem {
     pub topics: Vec<String>,
     pub data: String,
     pub block_number: String,
+    pub log_index: String,
     pub block_hash: String,
     pub transaction_hash: String,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortBlockResponse {
+    pub result: ShortBlock,
+}
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct ShortBlock {
+    pub number: u64,
 }

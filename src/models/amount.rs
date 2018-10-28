@@ -72,6 +72,7 @@ impl LowerHex for Amount {
 mod tests {
     use super::*;
 
+    #[test]
     fn test_serde_conversions() {
         let cases = [
             ("1000000010000000000000000000", 1000000010000000000000000000u128),
