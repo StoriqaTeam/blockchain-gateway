@@ -59,7 +59,7 @@ use self::pollers::{BitcoinPollerService, EthereumPollerService, StoriqaPollerSe
 use self::utils::log_error;
 use config::Config;
 use prelude::*;
-use rabbit::{ConnectionHooks, RabbitConnectionManager, TransactionPublisherImpl};
+use rabbit::{ConnectionHooks, Error as RabbitError, RabbitConnectionManager, TransactionPublisherImpl};
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -91,39 +91,29 @@ pub fn start_server() {
     thread::spawn(move || {
         let mut core = tokio_core::reactor::Core::new().unwrap();
         debug!("Started creating rabbit connection pool");
-        let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
-        let config_clone2 = config_clone.clone();
-        let f = RabbitConnectionManager::create(&config_clone)
-            .and_then(move |rabbit_connection_manager| {
-                let rabbit_connection_pool = r2d2::Pool::builder()
-                    .max_size(config_clone.rabbit.connection_pool_size as u32)
-                    .connection_customizer(Box::new(ConnectionHooks))
-                    .build(rabbit_connection_manager)
-                    .expect("Cannot build rabbit connection pool");
-                debug!("Finished creating rabbit connection pool");
-                let publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
-                publisher.init().map(|_| publisher)
-            }).map(|publisher| {
+        let config = config_clone.clone();
+        let f = create_transactions_publisher(&config_clone)
+            .map(|publisher| {
                 let publisher = Arc::new(publisher);
                 let ethereum_poller = EthereumPollerService::new(
-                    Duration::from_secs(config_clone2.poller.ethereum_interval_secs as u64),
+                    Duration::from_secs(config.poller.ethereum_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher.clone(),
-                    config_clone2.poller.ethereum_number_of_tracked_confirmations,
-                    config_clone2.poller.ethereum_start_block,
+                    config.poller.ethereum_number_of_tracked_confirmations,
+                    config.poller.ethereum_start_block,
                 );
                 let storiqa_poller = StoriqaPollerService::new(
-                    Duration::from_secs(config_clone2.poller.storiqa_interval_secs as u64),
+                    Duration::from_secs(config.poller.storiqa_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher.clone(),
-                    config_clone2.poller.storiqa_number_of_tracked_confirmations,
-                    config_clone2.poller.storiqa_start_block,
+                    config.poller.storiqa_number_of_tracked_confirmations,
+                    config.poller.storiqa_start_block,
                 );
                 let bitcoin_poller = BitcoinPollerService::new(
-                    Duration::from_secs(config_clone2.poller.bitcoin_interval_secs as u64),
+                    Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
                     bitcoin_client.clone(),
                     publisher.clone(),
-                    config_clone2.poller.bitcoin_number_of_tracked_confirmations,
+                    config.poller.bitcoin_number_of_tracked_confirmations,
                 );
 
                 bitcoin_poller.start();
@@ -176,7 +166,7 @@ pub fn get_btc_last_blocks(number: u64) {
     let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
-        .last_blocks(number)
+        .last_blocks(None, number)
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
@@ -193,7 +183,7 @@ pub fn get_btc_last_transactions(number: u64) {
     let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
-        .last_transactions(number)
+        .last_transactions(None, number)
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
@@ -203,6 +193,41 @@ pub fn get_btc_last_transactions(number: u64) {
 
     let mut core = ::tokio_core::reactor::Core::new().unwrap();
     let _ = core.run(fut);
+}
+
+pub fn publish_btc_transactions(hash: Option<String>, number: u64) {
+    let config = get_config();
+    let bitcoin_client = Arc::new(create_btc_client(&config));
+    let f = create_transactions_publisher(&config)
+        .map_err(|e| {
+            log_error(&e);
+        }).and_then(move |publisher| {
+            let btc_poller = BitcoinPollerService::new(
+                Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
+                bitcoin_client,
+                Arc::new(publisher),
+                number as usize,
+            );
+            btc_poller.publish_transactions(hash, number).map_err(|e| {
+                log_error(&e);
+            })
+        });
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(f);
+}
+
+fn create_transactions_publisher(config: &Config) -> impl Future<Item = TransactionPublisherImpl, Error = RabbitError> {
+    let config_clone = config.clone();
+    let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
+    RabbitConnectionManager::create(&config).and_then(move |rabbit_connection_manager| {
+        let rabbit_connection_pool = r2d2::Pool::builder()
+            .max_size(config_clone.rabbit.connection_pool_size as u32)
+            .connection_customizer(Box::new(ConnectionHooks))
+            .build(rabbit_connection_manager)
+            .expect("Cannot build rabbit connection pool");
+        let publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
+        publisher.init().map(|_| publisher)
+    })
 }
 
 fn create_btc_client(config: &Config) -> BitcoinClientImpl {

@@ -41,20 +41,26 @@ impl BitcoinPollerService {
         tokio::spawn(interval.map_err(|_| ()));
     }
 
-    fn tick(&self) {
+    pub fn publish_transactions(
+        &self,
+        start_block_hash: Option<String>,
+        prev_blocks_count: u64,
+    ) -> impl Future<Item = (), Error = Error> + Send {
         let publisher = self.publisher.clone();
-        let f = self
-            .client
-            .last_transactions(self.number_of_tracked_confirmations as u64)
+        self.client
+            .last_transactions(start_block_hash, prev_blocks_count)
             .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             .and_then(move |tx| {
                 publisher
                     .publish(vec![tx])
                     .map_err(ectx!(ErrorSource::Publisher, ErrorKind::Internal))
             }).for_each(|_| Ok(()))
-            .map_err(|e: Error| {
-                log_error(&e);
-            });
-        tokio::spawn(f);
+    }
+
+    fn tick(&self) {
+        let f = self.publish_transactions(None, self.number_of_tracked_confirmations as u64);
+        tokio::spawn(f.map_err(|e| {
+            log_error(&e);
+        }));
     }
 }

@@ -18,7 +18,11 @@ use utils::read_body;
 pub trait BitcoinClient: Send + Sync + 'static {
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
-    fn last_transactions(&self, block_count: u64) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
+    fn last_transactions(
+        &self,
+        start_block_hash: Option<String>,
+        prev_blocks_count: u64,
+    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -101,11 +105,15 @@ impl BitcoinClientImpl {
             .flatten()
     }
 
-    pub fn last_blocks(&self, block_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
+    pub fn last_blocks(&self, start_block_hash: Option<String>, prev_blocks_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
         let self_clone = self.clone();
-        self.get_best_block_hash()
+        let start_hash_f = match start_block_hash {
+            Some(hash) => future::Either::A(Ok(hash).into_future()),
+            None => future::Either::B(self.get_best_block_hash()),
+        };
+        start_hash_f
             .into_stream()
-            .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, block_count))
+            .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, prev_blocks_count))
             .flatten()
     }
 
@@ -235,26 +243,17 @@ impl BitcoinClientImpl {
             confirmations,
         })
     }
-
-    fn get_transactions_by_block_offset_and_limit(
-        &self,
-        block: u64,
-        offset: u64,
-        limit: u64,
-    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
-        unimplemented!()
-    }
-
-    fn get_transaction_hashes_by_block(&self, block: u64) -> Box<Future<Item = Vec<String>, Error = Error> + Send> {
-        unimplemented!()
-    }
 }
 
 impl BitcoinClient for BitcoinClientImpl {
-    fn last_transactions(&self, block_count: u64) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
+    fn last_transactions(
+        &self,
+        start_block_hash: Option<String>,
+        prev_blocks_count: u64,
+    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
         let self_clone = self.clone();
         Box::new(
-            self.last_blocks(block_count)
+            self.last_blocks(start_block_hash, prev_blocks_count)
                 .map(move |block| self_clone.block_transactions(block))
                 .flatten(),
         )

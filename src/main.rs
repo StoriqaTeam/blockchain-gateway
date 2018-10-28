@@ -30,6 +30,11 @@ fn main() {
         let param = matches.value_of("number").unwrap();
         let number: u64 = param.parse().unwrap();
         blockchain_gateway_lib::get_btc_last_transactions(number);
+    } else if let Some(matches) = matches.subcommand_matches("publish_btc_transactions") {
+        let param = matches.value_of("number").unwrap_or("1");
+        let number: u64 = param.parse().unwrap();
+        let hash = matches.value_of("hash").map(|x| x.to_string());
+        blockchain_gateway_lib::publish_btc_transactions(hash, number);
     } else {
         let _ = app.print_help();
         println!("\n")
