@@ -29,7 +29,6 @@ pub struct TransactionResponse {
     pub from: String,
     pub to: Option<String>,
     pub value: String,
-    pub gas: String,
     pub gas_price: String,
 }
 
@@ -64,4 +63,28 @@ pub struct ShortBlockResponse {
 #[serde(rename_all = "camelCase")]
 pub struct ShortBlock {
     pub number: u64,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionReceiptResponse {
+    pub result: TransactionReceipt,
+}
+
+#[derive(Debug, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct TransactionReceipt {
+    pub block_number: String,
+    pub gas_used: String,
+}
+
+#[derive(Debug, Serialize, Deserialize, Clone)]
+#[serde(rename_all = "camelCase")]
+pub struct PartialBlockchainTransaction {
+    pub hash: String,
+    pub from: Vec<String>,
+    pub to: Vec<BlockchainTransactionEntry>,
+    pub block_number: u64,
+    pub currency: Currency,
+    pub gas_price: Amount,
 }

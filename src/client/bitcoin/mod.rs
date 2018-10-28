@@ -172,7 +172,7 @@ impl BitcoinClientImpl {
                 let value = out_out.value;
                 Ok(BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
-                    address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
+                    address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value,
                 })
             }).collect();
@@ -183,7 +183,7 @@ impl BitcoinClientImpl {
                 let Vout { script_pub_key, value } = vout;
                 BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
-                    address: script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
+                    address: script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value: *value,
                 }
             }).collect();
