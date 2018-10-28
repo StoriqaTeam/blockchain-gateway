@@ -19,17 +19,16 @@ fn main() {
     } else if let Some(matches) = matches.subcommand_matches("get_btc_transaction") {
         let hash = matches.value_of("hash").unwrap();
         blockchain_gateway_lib::get_btc_transaction(&hash);
-    } else if let Some(matches) = matches.subcommand_matches("get_btc_block") {
-        let hash = matches.value_of("hash").unwrap();
-        blockchain_gateway_lib::get_btc_block(&hash);
-    } else if let Some(matches) = matches.subcommand_matches("get_btc_last_blocks") {
-        let param = matches.value_of("number").unwrap();
+    } else if let Some(matches) = matches.subcommand_matches("get_btc_blocks") {
+        let param = matches.value_of("number").unwrap_or("1");
         let number: u64 = param.parse().unwrap();
-        blockchain_gateway_lib::get_btc_last_blocks(number);
-    } else if let Some(matches) = matches.subcommand_matches("get_btc_last_transactions") {
-        let param = matches.value_of("number").unwrap();
+        let hash = matches.value_of("hash").map(|x| x.to_string());
+        blockchain_gateway_lib::get_btc_blocks(hash, number);
+    } else if let Some(matches) = matches.subcommand_matches("get_btc_transactions") {
+        let param = matches.value_of("number").unwrap_or("1");
         let number: u64 = param.parse().unwrap();
-        blockchain_gateway_lib::get_btc_last_transactions(number);
+        let hash = matches.value_of("hash").map(|x| x.to_string());
+        blockchain_gateway_lib::get_btc_transactions(hash, number);
     } else if let Some(matches) = matches.subcommand_matches("publish_btc_transactions") {
         let param = matches.value_of("number").unwrap_or("1");
         let number: u64 = param.parse().unwrap();

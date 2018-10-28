@@ -134,7 +134,7 @@ pub fn get_btc_transaction(hash: &str) {
     let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
-        .get_transaction_by_hash(hash.to_string(), 0)
+        .get_transaction(hash.to_string(), 0)
         .map(|tx| {
             println!("{:#?}", tx);
         }).map_err(|e| {
@@ -145,28 +145,12 @@ pub fn get_btc_transaction(hash: &str) {
     let _ = core.run(fut);
 }
 
-pub fn get_btc_block(hash: &str) {
+pub fn get_btc_blocks(hash: Option<String>, number: u64) {
     let config = get_config();
     let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
-        .get_block_by_hash(hash.to_string())
-        .map(|block| {
-            println!("{:#?}", block);
-        }).map_err(|e| {
-            log_error(&e);
-        });
-
-    let mut core = ::tokio_core::reactor::Core::new().unwrap();
-    let _ = core.run(fut);
-}
-
-pub fn get_btc_last_blocks(number: u64) {
-    let config = get_config();
-    let bitcoin_client = create_btc_client(&config);
-
-    let fut = bitcoin_client
-        .last_blocks(None, number)
+        .last_blocks(hash, number)
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
@@ -178,12 +162,12 @@ pub fn get_btc_last_blocks(number: u64) {
     let _ = core.run(fut);
 }
 
-pub fn get_btc_last_transactions(number: u64) {
+pub fn get_btc_transactions(hash: Option<String>, number: u64) {
     let config = get_config();
     let bitcoin_client = create_btc_client(&config);
 
     let fut = bitcoin_client
-        .last_transactions(None, number)
+        .last_transactions(hash, number)
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())

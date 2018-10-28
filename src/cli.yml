@@ -16,33 +16,40 @@ subcommands:
                 help: transaction hash
                 required: true
                 takes_value: true
-    - get_btc_block:
-        about: Fetches btc block from btc node
+    - get_btc_blocks:
+        about: Fetches last blocks from btc blockchain
         args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks to get. Default is 1.
+                required: false
+                takes_value: true
             - hash:
                 short: h
                 long: hash
-                help: block hash
-                required: true
+                help: hash of a first block. Default is latest block.
+                required: false
                 takes_value: true
-    - get_btc_last_blocks:
-        about: Fetches last blocks from btc blockchain
+
+    - get_btc_transactions:
+        about: Fetches transactions from btc blockchain
         args:
             - number:
                 short: n
                 long: number
-                help: number of blocks to get
-                required: true
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
                 takes_value: true
-    - get_btc_last_transactions:
-        about: Fetches last blocks from btc blockchain
-        args:
-            - number:
-                short: n
-                long: number
-                help: number of blocks for transactions
-                required: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions. Default is latest block.
+                required: false
                 takes_value: true
+
+
     - publish_btc_transactions:
         about: >
             Publish btc transactions to rabbitmq. Transactions will be that of block specified by hash param
