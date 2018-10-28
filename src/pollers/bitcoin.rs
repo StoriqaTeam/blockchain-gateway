@@ -44,11 +44,11 @@ impl BitcoinPollerService {
     pub fn publish_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> impl Future<Item = (), Error = Error> + Send {
         let publisher = self.publisher.clone();
         self.client
-            .last_transactions(start_block_hash, prev_blocks_count)
+            .last_transactions(start_block_hash, blocks_count)
             .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             .and_then(move |tx| {
                 publisher

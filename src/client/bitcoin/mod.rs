@@ -25,14 +25,14 @@ pub trait BitcoinClient: Send + Sync + 'static {
     /// supported, you need to provide one in arguments
     fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send>;
     /// Get blocks starting from `start_block_hash` (or the most recent block if not specified)
-    /// and fetch previous blocks. Total number of blocks = `prev_blocks_count`.
-    /// `prev_blocks_count` should be greater than 0.
-    fn last_blocks(&self, start_block_hash: Option<String>, prev_blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send>;
+    /// and fetch previous blocks. Total number of blocks = `blocks_count`.
+    /// `blocks_count` should be greater than 0.
+    fn last_blocks(&self, start_block_hash: Option<String>, blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send>;
     /// Same as `last_blocks`, but returns transactions instead
     fn last_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
 }
 
@@ -241,7 +241,7 @@ impl BitcoinClient for BitcoinClientImpl {
         )
     }
 
-    fn last_blocks(&self, start_block_hash: Option<String>, prev_blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send> {
+    fn last_blocks(&self, start_block_hash: Option<String>, blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send> {
         let self_clone = self.clone();
         let start_hash_f = match start_block_hash {
             Some(hash) => future::Either::A(Ok(hash).into_future()),
@@ -250,7 +250,7 @@ impl BitcoinClient for BitcoinClientImpl {
         Box::new(
             start_hash_f
                 .into_stream()
-                .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, prev_blocks_count))
+                .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, blocks_count))
                 .flatten(),
         )
     }
@@ -258,11 +258,11 @@ impl BitcoinClient for BitcoinClientImpl {
     fn last_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
         let self_clone = self.clone();
         Box::new(
-            self.last_blocks(start_block_hash, prev_blocks_count)
+            self.last_blocks(start_block_hash, blocks_count)
                 .map(move |block| self_clone.block_transactions(block))
                 .flatten(),
         )

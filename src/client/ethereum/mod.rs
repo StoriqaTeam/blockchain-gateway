@@ -23,12 +23,12 @@ pub trait EthereumClient: Send + Sync + 'static {
     /// supported, you need to provide one in arguments
     fn get_eth_transaction(&self, hash: String) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send>;
     /// Get transactions from blocks starting from `start_block_hash` (or the most recent block if not specified)
-    /// and fetch previous blocks. Total number of blocks = `prev_blocks_count`.
-    /// `prev_blocks_count` should be greater than 0.
+    /// and fetch previous blocks. Total number of blocks = `blocks_count`.
+    /// `blocks_count` should be greater than 0.
     fn last_eth_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
     /// Same as `get_eth_transaction` for stq. Since there could be many stq transfers in one transaction
     /// we return Stream here.
@@ -37,7 +37,7 @@ pub trait EthereumClient: Send + Sync + 'static {
     fn last_stq_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
 }
 
@@ -101,7 +101,7 @@ impl EthereumClientImpl {
     fn last_eth_transactions_with_current_block(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
         current_block: u64,
     ) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
         let to_block_number_f = match start_block_hash {
@@ -112,7 +112,7 @@ impl EthereumClientImpl {
         let self_clone2 = self.clone();
         to_block_number_f
             .into_stream()
-            .map(move |to_block| stream::iter_ok::<_, Error>(to_block - prev_blocks_count + 1..=to_block))
+            .map(move |to_block| stream::iter_ok::<_, Error>(to_block - blocks_count + 1..=to_block))
             .flatten()
             .map(move |block_number| self_clone.get_eth_transactions_for_block(block_number))
             .flatten()
@@ -193,7 +193,7 @@ impl EthereumClientImpl {
     fn last_stq_transactions_with_current_block(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
         current_block: u64,
     ) -> impl Stream<Item = BlockchainTransaction, Error = Error> + Send {
         let to_block_number_f = match start_block_hash {
@@ -204,7 +204,7 @@ impl EthereumClientImpl {
         let self_clone2 = self.clone();
         to_block_number_f
             .into_stream()
-            .map(move |to_block| self_clone.get_stq_transactions_for_blocks(to_block - prev_blocks_count + 1, to_block))
+            .map(move |to_block| self_clone.get_stq_transactions_for_blocks(to_block - blocks_count + 1, to_block))
             .flatten()
             .and_then(move |tx| self_clone2.partial_tx_to_tx(&tx, current_block))
     }
@@ -374,7 +374,7 @@ impl EthereumClient for EthereumClientImpl {
     fn last_eth_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
         let self_clone = self.clone();
         Box::new(
@@ -382,7 +382,7 @@ impl EthereumClient for EthereumClientImpl {
                 .into_stream()
                 .map(move |current_block| {
                     let hash = start_block_hash.clone();
-                    self_clone.last_eth_transactions_with_current_block(hash, prev_blocks_count, current_block)
+                    self_clone.last_eth_transactions_with_current_block(hash, blocks_count, current_block)
                 }).flatten(),
         )
     }
@@ -400,7 +400,7 @@ impl EthereumClient for EthereumClientImpl {
     fn last_stq_transactions(
         &self,
         start_block_hash: Option<String>,
-        prev_blocks_count: u64,
+        blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
         let self_clone = self.clone();
         Box::new(
@@ -408,7 +408,7 @@ impl EthereumClient for EthereumClientImpl {
                 .into_stream()
                 .map(move |current_block| {
                     let hash = start_block_hash.clone();
-                    self_clone.last_stq_transactions_with_current_block(hash, prev_blocks_count, current_block)
+                    self_clone.last_stq_transactions_with_current_block(hash, blocks_count, current_block)
                 }).flatten(),
         )
     }
