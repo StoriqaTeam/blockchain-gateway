@@ -15,11 +15,20 @@ use prelude::*;
 use serde_json;
 use utils::read_body;
 
+/// Client for working with Bitcoin blockchain
 pub trait BitcoinClient: Send + Sync + 'static {
+    /// Get available Utxos for bitcoin address
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
+    /// Send raw transaction to blockchain
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
+    /// Get transaction by hash. Since getting block_number from transaction is not yet
+    /// supported, you need to provide one in arguments
     fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send>;
+    /// Get blocks starting from `start_block_hash` (or the most recent block if not specified)
+    /// and fetch previous blocks. Total number of blocks = `prev_blocks_count`.
+    /// `prev_blocks_count` should be greater than 0.
     fn last_blocks(&self, start_block_hash: Option<String>, prev_blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send>;
+    /// Same as `last_blocks`, but returns transactions instead
     fn last_transactions(
         &self,
         start_block_hash: Option<String>,
