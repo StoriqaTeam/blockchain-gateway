@@ -14,7 +14,6 @@ pub struct EthereumPollerService {
     interval: Duration,
     client: Arc<EthereumClient>,
     publisher: Arc<TransactionPublisher>,
-    current_block: Option<u64>,
     number_of_tracked_confirmations: usize,
 }
 
@@ -24,13 +23,11 @@ impl EthereumPollerService {
         client: Arc<EthereumClient>,
         publisher: Arc<TransactionPublisher>,
         number_of_tracked_confirmations: usize,
-        start_block: Option<u64>,
     ) -> Self {
         Self {
             interval,
             client,
             publisher,
-            current_block: start_block,
             number_of_tracked_confirmations,
         }
     }

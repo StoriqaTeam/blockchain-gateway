@@ -49,7 +49,7 @@ use std::sync::Arc;
 use std::thread;
 use std::time::Duration;
 
-use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClientImpl, HttpClientImpl};
+use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
 use self::pollers::{BitcoinPollerService, EthereumPollerService, StoriqaPollerService};
 use self::utils::log_error;
 use config::Config;
@@ -95,14 +95,12 @@ pub fn start_server() {
                     ethereum_client.clone(),
                     publisher.clone(),
                     config.poller.ethereum_number_of_tracked_confirmations,
-                    config.poller.ethereum_start_block,
                 );
                 let storiqa_poller = StoriqaPollerService::new(
                     Duration::from_secs(config.poller.storiqa_interval_secs as u64),
                     ethereum_client.clone(),
                     publisher.clone(),
                     config.poller.storiqa_number_of_tracked_confirmations,
-                    config.poller.storiqa_start_block,
                 );
                 let bitcoin_poller = BitcoinPollerService::new(
                     Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
@@ -124,22 +122,6 @@ pub fn start_server() {
     api::start_server(config);
 }
 
-pub fn get_btc_transaction(hash: &str) {
-    let config = get_config();
-    let bitcoin_client = create_btc_client(&config);
-
-    let fut = bitcoin_client
-        .get_transaction(hash.to_string(), 0)
-        .map(|tx| {
-            println!("{:#?}", tx);
-        }).map_err(|e| {
-            log_error(&e);
-        });
-
-    let mut core = ::tokio_core::reactor::Core::new().unwrap();
-    let _ = core.run(fut);
-}
-
 pub fn get_btc_blocks(hash: Option<String>, number: u64) {
     let config = get_config();
     let bitcoin_client = create_btc_client(&config);
@@ -149,6 +131,22 @@ pub fn get_btc_blocks(hash: Option<String>, number: u64) {
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+pub fn get_btc_transaction(hash: &str) {
+    let config = get_config();
+    let bitcoin_client = create_btc_client(&config);
+
+    let fut = bitcoin_client
+        .get_transaction(hash.to_string(), 0)
+        .map(|tx| {
+            println!("{:#?}", tx);
         }).map_err(|e| {
             log_error(&e);
         });
@@ -195,6 +193,115 @@ pub fn publish_btc_transactions(hash: Option<String>, number: u64) {
     let _ = core.run(f);
 }
 
+pub fn get_eth_transaction(hash: &str) {
+    let config = get_config();
+    let ethereum_client = create_eth_client(&config);
+
+    let fut = ethereum_client
+        .get_eth_transaction(hash.to_string())
+        .map(|tx| {
+            println!("{:#?}", tx);
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+pub fn get_eth_transactions(hash: Option<String>, number: u64) {
+    let config = get_config();
+    let ethereum_client = create_eth_client(&config);
+
+    let fut = ethereum_client
+        .last_eth_transactions(hash, number)
+        .for_each(|block| {
+            println!("{:#?}", block);
+            Ok(())
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+pub fn publish_eth_transactions(hash: Option<String>, number: u64) {
+    let config = get_config();
+    let ethereum_client = Arc::new(create_eth_client(&config));
+    let f = create_transactions_publisher(&config)
+        .map_err(|e| {
+            log_error(&e);
+        }).and_then(move |publisher| {
+            let eth_poller = EthereumPollerService::new(
+                Duration::from_secs(config.poller.ethereum_interval_secs as u64),
+                ethereum_client,
+                Arc::new(publisher),
+                number as usize,
+            );
+            eth_poller.publish_transactions(hash, number).map_err(|e| {
+                log_error(&e);
+            })
+        });
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(f);
+}
+
+pub fn get_stq_transaction(hash: &str) {
+    let config = get_config();
+    let storiqa_client = create_eth_client(&config);
+
+    let fut = storiqa_client
+        .get_stq_transactions(hash.to_string())
+        .for_each(|tx| {
+            println!("{:#?}", tx);
+            Ok(())
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+pub fn get_stq_transactions(hash: Option<String>, number: u64) {
+    let config = get_config();
+    let storiqa_client = create_eth_client(&config);
+
+    let fut = storiqa_client
+        .last_stq_transactions(hash, number)
+        .for_each(|block| {
+            println!("{:#?}", block);
+            Ok(())
+        }).map_err(|e| {
+            log_error(&e);
+        });
+
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(fut);
+}
+
+pub fn publish_stq_transactions(hash: Option<String>, number: u64) {
+    let config = get_config();
+    let storiqa_client = Arc::new(create_eth_client(&config));
+    let f = create_transactions_publisher(&config)
+        .map_err(|e| {
+            log_error(&e);
+        }).and_then(move |publisher| {
+            let stq_poller = StoriqaPollerService::new(
+                Duration::from_secs(config.poller.storiqa_interval_secs as u64),
+                storiqa_client,
+                Arc::new(publisher),
+                number as usize,
+            );
+            stq_poller.publish_transactions(hash, number).map_err(|e| {
+                log_error(&e);
+            })
+        });
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let _ = core.run(f);
+}
+
 fn create_transactions_publisher(config: &Config) -> impl Future<Item = TransactionPublisherImpl, Error = RabbitError> {
     let config_clone = config.clone();
     let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
@@ -218,6 +325,17 @@ fn create_btc_client(config: &Config) -> BitcoinClientImpl {
         config.client.bitcoin_rpc_url.clone(),
         config.client.bitcoin_rpc_user.clone(),
         config.client.bitcoin_rpc_password.clone(),
+    )
+}
+
+fn create_eth_client(config: &Config) -> EthereumClientImpl {
+    let http_client = Arc::new(HttpClientImpl::new(config));
+    EthereumClientImpl::new(
+        http_client.clone(),
+        config.mode.clone(),
+        config.client.infura_key.clone(),
+        config.client.stq_contract_address.clone(),
+        config.client.stq_transfer_topic.clone(),
     )
 }
 
