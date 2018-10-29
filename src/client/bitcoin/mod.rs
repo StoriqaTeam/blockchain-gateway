@@ -171,10 +171,13 @@ impl BitcoinClientImpl {
                     .ok_or(ectx!(try err ErrorContext::BitcoinRpcConversion, ErrorKind::Internal => hash_clone.clone()))?;
                 let value = out_out.value;
                 Ok(BlockchainTransactionEntry {
-                    // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
                     address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value,
                 })
+            }).filter_map(|entry_res| match entry_res {
+                // these kind of entries are ok for bitcoin, but they are script based, we ignore such entries
+                Ok(ref entry) if entry.address == "0" => None,
+                x @ _ => Some(x),
             }).collect();
         let from = from?;
         let to: Vec<_> = vouts
