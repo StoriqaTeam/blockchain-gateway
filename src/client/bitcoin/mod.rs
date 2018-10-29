@@ -174,10 +174,6 @@ impl BitcoinClientImpl {
                     address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value,
                 })
-            }).filter_map(|entry_res| match entry_res {
-                // these kind of entries are ok for bitcoin, but they are script based, we ignore such entries
-                Ok(ref entry) if entry.address == "0" => None,
-                x @ _ => Some(x),
             }).collect();
         let from = from?;
         let to: Vec<_> = vouts
@@ -200,7 +196,16 @@ impl BitcoinClientImpl {
             (Some(fs), Some(ts)) => fs.checked_sub(ts),
             _ => None,
         }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2, from_sum, to_sum))?;
-        let from: Vec<_> = from.into_iter().map(|from| from.address).collect();
+        let from: Vec<_> = from
+            .into_iter()
+            .filter_map(|entry| match entry {
+                // these kind of entries are ok for bitcoin, but they are script based, we ignore such entries
+                // also note, that they can contain values, therefore we filter it here, rather than above,
+                // so that from_sum and to_sum is correct
+                ref x if x.address == "0" => None,
+                x @ _ => Some(x),
+            }).map(|from| from.address)
+            .collect();
         Ok(BlockchainTransaction {
             hash,
             from,
