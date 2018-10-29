@@ -6,7 +6,22 @@ subcommands:
     - config:
         about: Prints current config
     - server:
-        about: Starts server
+        about: Starts server and blockchain fetchers
+    - get_btc_blocks:
+        about: Fetches last blocks from btc blockchain
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks to get. Default is 1.
+                required: false
+                takes_value: true
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block. Default is latest block.
+                required: false
+                takes_value: true
     - get_btc_transaction:
         about: Fetches btc transaction from btc node
         args:
@@ -15,4 +30,132 @@ subcommands:
                 long: hash
                 help: transaction hash
                 required: true
+                takes_value: true
+
+    - get_btc_transactions:
+        about: Fetches transactions from btc blockchain
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions. Default is latest block.
+                required: false
+                takes_value: true
+
+    - publish_btc_transactions:
+        about: >
+            Publish btc transactions to rabbitmq. Transactions will be that of block specified by hash param
+            and will also include up to (number - 1) previous blocks.
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions to publish. Default is latest block.
+                required: false
+                takes_value: true
+
+    - get_eth_transaction:
+        about: Fetches eth transaction from eth node
+        args:
+            - hash:
+                short: h
+                long: hash
+                help: transaction hash
+                required: true
+                takes_value: true
+
+    - get_eth_transactions:
+        about: Fetches transactions from eth blockchain
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions. Default is latest block.
+                required: false
+                takes_value: true
+
+    - publish_eth_transactions:
+        about: >
+            Publish eth transactions to rabbitmq. Transactions will be that of block specified by hash param
+            and will also include up to (number - 1) previous blocks.
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions to publish. Default is latest block.
+                required: false
+                takes_value: true
+
+    - get_stq_transaction:
+        about: Fetches stq transaction from eth node
+        args:
+            - hash:
+                short: h
+                long: hash
+                help: transaction hash
+                required: true
+                takes_value: true
+
+    - get_stq_transactions:
+        about: Fetches transactions from eth blockchain
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions. Default is latest block.
+                required: false
+                takes_value: true
+
+    - publish_stq_transactions:
+        about: >
+            Publish stq transactions to rabbitmq. Transactions will be that of block specified by hash param
+            and will also include up to (number - 1) previous blocks.
+        args:
+            - number:
+                short: n
+                long: number
+                help: number of blocks as a source for transactions. Default is 1.
+                required: false
+                takes_value: true
+
+            - hash:
+                short: h
+                long: hash
+                help: hash of a first block with transactions to publish. Default is latest block.
+                required: false
                 takes_value: true

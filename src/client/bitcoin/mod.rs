@@ -15,10 +15,25 @@ use prelude::*;
 use serde_json;
 use utils::read_body;
 
+/// Client for working with Bitcoin blockchain
 pub trait BitcoinClient: Send + Sync + 'static {
+    /// Get available Utxos for bitcoin address
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
+    /// Send raw transaction to blockchain
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
-    fn get_transactions(&self, from_block: u64, to_block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send>;
+    /// Get transaction by hash. Since getting block_number from transaction is not yet
+    /// supported, you need to provide one in arguments
+    fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send>;
+    /// Get blocks starting from `start_block_hash` (or the most recent block if not specified)
+    /// and fetch previous blocks. Total number of blocks = `blocks_count`.
+    /// `blocks_count` should be greater than 0.
+    fn last_blocks(&self, start_block_hash: Option<String>, blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send>;
+    /// Same as `last_blocks`, but returns transactions instead
+    fn last_transactions(
+        &self,
+        start_block_hash: Option<String>,
+        blocks_count: u64,
+    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
 }
 
 #[derive(Clone)]
@@ -31,7 +46,7 @@ pub struct BitcoinClientImpl {
     bitcoin_rpc_password: String,
 }
 
-const BLOCK_TXS_LIMIT: u64 = 50;
+const BLOCK_TXS_LIMIT: u64 = 10;
 
 impl BitcoinClientImpl {
     pub fn new(
@@ -51,23 +66,6 @@ impl BitcoinClientImpl {
             bitcoin_rpc_password,
         }
     }
-
-    // fn get_transactions_by_hashes(
-    //     &self,
-    //     hash_stream: Box<Stream<Item = String, Error = Error> + Send>,
-    // ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
-    //     let self_clone = self.clone();
-    //     Box::new(
-    //         hash_stream
-    //             .chunks(BLOCK_TXS_LIMIT as usize)
-    //             .and_then(move |hashes| {
-    //                 let self_clone = self_clone.clone();
-    //                 let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction_by_hash(hash));
-    //                 future::join_all(fs)
-    //             }).map(|x| stream::iter_ok(x))
-    //             .flatten(),
-    //     )
-    // }
 
     fn get_rpc_response<T>(&self, params: &::serde_json::Value) -> impl Future<Item = T, Error = Error> + Send
     where
@@ -97,36 +95,56 @@ impl BitcoinClientImpl {
             })
     }
 
-    pub fn get_transaction_by_hash(
-        &self,
-        hash: String,
-        block_number: u64,
-    ) -> impl Future<Item = BlockchainTransaction, Error = Error> + Send {
+    fn block_transactions(&self, block: Block) -> impl Stream<Item = BlockchainTransaction, Error = Error> {
+        let self_clone = self.clone();
+        let Block {
+            tx: transactions,
+            height: block_number,
+            ..
+        } = block;
+        // skipping coinbase transaction
+        let hash_stream = stream::iter_ok(transactions.into_iter().skip(1));
+        hash_stream
+            .chunks(BLOCK_TXS_LIMIT as usize)
+            .and_then(move |hashes| {
+                let self_clone = self_clone.clone();
+                let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction(hash, block_number));
+                future::join_all(fs)
+            }).map(|x| stream::iter_ok(x))
+            .flatten()
+    }
+
+    fn last_blocks_from_hash(&self, block_hash: String, block_count: u64) -> impl Stream<Item = Block, Error = Error> + Send {
+        let self_clone = self.clone();
+        stream::unfold((block_count, block_hash), move |(blocks_left, current_hash)| {
+            if blocks_left == 0 {
+                return None;
+            }
+            let f = self_clone
+                .get_block_by_hash(current_hash)
+                .map(move |block| (block.clone(), (blocks_left - 1, block.previousblockhash.clone())));
+            Some(f)
+        })
+    }
+
+    fn get_best_block_hash(&self) -> impl Future<Item = String, Error = Error> + Send {
         let params = json!({
             "jsonrpc": "2",
             "id": "1",
-            "method": "getrawtransaction",
-            "params": [hash, true]
+            "method": "getbestblockhash",
+            "params": []
         });
-        let self_clone = self.clone();
-        self.get_rpc_response::<RpcRawTransactionResponse>(&params)
-            .and_then(move |resp| {
-                let self_clone = self_clone.clone();
-                let in_transaction_fs: Vec<_> = resp
-                    .result
-                    .vin
-                    .iter()
-                    .map(move |vin| {
-                        let params = json!({
-                            "jsonrpc": "2",
-                            "id": "1",
-                            "method": "getrawtransaction",
-                            "params": [vin.txid, true]
-                        });
-                        self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params).map(|r| r.result)
-                    }).collect();
-                future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
-            }).and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number))
+        self.get_rpc_response::<RpcBestBlockResponse>(&params).map(|r| r.result)
+    }
+
+    pub fn get_block_by_hash(&self, hash: String) -> impl Future<Item = Block, Error = Error> + Send {
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getblock",
+            "params": [hash]
+        });
+        self.get_rpc_response::<RpcBlockResponse>(&params).map(|r| r.result)
     }
 
     fn rpc_tx_to_tx(tx: RpcRawTransaction, in_txs: Vec<RpcRawTransaction>, block_number: u64) -> Result<BlockchainTransaction, Error> {
@@ -151,10 +169,10 @@ impl BitcoinClientImpl {
                     .vout
                     .get(*index)
                     .ok_or(ectx!(try err ErrorContext::BitcoinRpcConversion, ErrorKind::Internal => hash_clone.clone()))?;
-                let value = Amount::new((out_out.value * 100_000_000f64) as u128);
+                let value = out_out.value;
                 Ok(BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
-                    address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
+                    address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value,
                 })
             }).collect();
@@ -163,11 +181,10 @@ impl BitcoinClientImpl {
             .iter()
             .map(|vout| {
                 let Vout { script_pub_key, value } = vout;
-                let value = Amount::new((value * 100_000_000f64) as u128);
                 BlockchainTransactionEntry {
                     // TODO - figure out the case with scripthash, so far we say that address is 0 in this case
-                    address: script_pub_key.addresses.get(0).cloned().unwrap_or("0x0".to_string()),
-                    value,
+                    address: script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
+                    value: *value,
                 }
             }).collect();
         let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
@@ -177,9 +194,9 @@ impl BitcoinClientImpl {
             acc.and_then(|acc_val| acc_val.checked_add(item.value))
         });
         let fee = match (from_sum, to_sum) {
-            (Some(fs), Some(ts)) => ts.checked_sub(fs),
+            (Some(fs), Some(ts)) => fs.checked_sub(ts),
             _ => None,
-        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2))?;
+        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2, from_sum, to_sum))?;
         let from: Vec<_> = from.into_iter().map(|from| from.address).collect();
         Ok(BlockchainTransaction {
             hash,
@@ -191,76 +208,67 @@ impl BitcoinClientImpl {
             confirmations,
         })
     }
-
-    fn btc_response_to_tx(resp: GetTransactionResponse) -> Result<BlockchainTransaction, Error> {
-        let resp_clone = resp.clone();
-        let GetTransactionResponse {
-            hash,
-            inputs,
-            out,
-            block_height,
-        } = resp;
-        let from: Vec<_> = inputs
-            .into_iter()
-            .map(|entry_resp| BlockchainTransactionEntry {
-                address: entry_resp.prev_out.addr,
-                value: entry_resp.prev_out.value,
-            }).collect();
-        let to: Vec<_> = out
-            .into_iter()
-            .map(|entry_resp| BlockchainTransactionEntry {
-                address: entry_resp.addr,
-                value: entry_resp.value,
-            }).collect();
-
-        // let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
-        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        // });
-        // let to_sum = to.iter().fold(Some(Amount::new(0)), |acc, item| {
-        //     acc.and_then(|acc_val| acc_val.checked_add(item.value))
-        // });
-        // let fee = match (from_sum, to_sum) {
-        //     (Some(fs), Some(ts)) => ts.checked_sub(fs),
-        //     _ => None,
-        // }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => resp_clone))?;
-
-        // Todo
-        let fee = Amount::new(0);
-        let from: Vec<_> = from.into_iter().map(|x| x.address).collect();
-
-        Ok(BlockchainTransaction {
-            hash,
-            from,
-            to,
-            block_number: block_height,
-            currency: Currency::Btc,
-            fee,
-            confirmations: 0,
-        })
-    }
-
-    fn get_transactions_by_block_offset_and_limit(
-        &self,
-        block: u64,
-        offset: u64,
-        limit: u64,
-    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
-        unimplemented!()
-    }
-
-    fn get_transaction_hashes_by_block(&self, block: u64) -> Box<Future<Item = Vec<String>, Error = Error> + Send> {
-        unimplemented!()
-    }
 }
 
 impl BitcoinClient for BitcoinClientImpl {
-    fn get_transactions(&self, from_block: u64, to_block: u64) -> Box<Future<Item = Vec<BlockchainTransaction>, Error = Error> + Send> {
-        // (from_block..=to_block).iter().map(|block| )
-        unimplemented!()
+    fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send> {
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getrawtransaction",
+            "params": [hash, true]
+        });
+        let self_clone = self.clone();
+        Box::new(
+            self.get_rpc_response::<RpcRawTransactionResponse>(&params)
+                .and_then(move |resp| {
+                    let self_clone = self_clone.clone();
+                    let in_transaction_fs: Vec<_> = resp
+                        .result
+                        .vin
+                        .iter()
+                        .map(move |vin| {
+                            let params = json!({
+                            "jsonrpc": "2",
+                            "id": "1",
+                            "method": "getrawtransaction",
+                            "params": [vin.txid, true]
+                        });
+                            self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params).map(|r| r.result)
+                        }).collect();
+                    future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
+                }).and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number)),
+        )
+    }
+
+    fn last_blocks(&self, start_block_hash: Option<String>, blocks_count: u64) -> Box<Stream<Item = Block, Error = Error> + Send> {
+        let self_clone = self.clone();
+        let start_hash_f = match start_block_hash {
+            Some(hash) => future::Either::A(Ok(hash).into_future()),
+            None => future::Either::B(self.get_best_block_hash()),
+        };
+        Box::new(
+            start_hash_f
+                .into_stream()
+                .map(move |block_hash| self_clone.last_blocks_from_hash(block_hash, blocks_count))
+                .flatten(),
+        )
+    }
+
+    fn last_transactions(
+        &self,
+        start_block_hash: Option<String>,
+        blocks_count: u64,
+    ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
+        let self_clone = self.clone();
+        Box::new(
+            self.last_blocks(start_block_hash, blocks_count)
+                .map(move |block| self_clone.block_transactions(block))
+                .flatten(),
+        )
     }
 
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send> {
-        let address_clone = address.clone();
         let address_clone2 = address.clone();
         let http_client = self.http_client.clone();
         let uri_base = match self.mode {
@@ -286,7 +294,6 @@ impl BitcoinClient for BitcoinClientImpl {
     }
 
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
-        let tx_clone = tx.clone();
         let tx_clone2 = tx.clone();
         let http_client = self.http_client.clone();
         let uri_net_name = match self.mode {

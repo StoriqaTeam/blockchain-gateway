@@ -2,7 +2,7 @@ use std::sync::Arc;
 use std::time::Duration;
 
 use super::error::*;
-use client::EthereumClient;
+use client::BitcoinClient;
 use prelude::*;
 use rabbit::TransactionPublisher;
 use tokio;
@@ -10,17 +10,17 @@ use tokio::timer::Interval;
 use utils::log_error;
 
 #[derive(Clone)]
-pub struct StoriqaPollerService {
+pub struct BitcoinPollerService {
     interval: Duration,
-    client: Arc<EthereumClient>,
+    client: Arc<BitcoinClient>,
     publisher: Arc<TransactionPublisher>,
     number_of_tracked_confirmations: usize,
 }
 
-impl StoriqaPollerService {
+impl BitcoinPollerService {
     pub fn new(
         interval: Duration,
-        client: Arc<EthereumClient>,
+        client: Arc<BitcoinClient>,
         publisher: Arc<TransactionPublisher>,
         number_of_tracked_confirmations: usize,
     ) -> Self {
@@ -48,7 +48,7 @@ impl StoriqaPollerService {
     ) -> impl Future<Item = (), Error = Error> + Send {
         let publisher = self.publisher.clone();
         self.client
-            .last_stq_transactions(start_block_hash, blocks_count)
+            .last_transactions(start_block_hash, blocks_count)
             .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
             .and_then(move |tx| {
                 publisher

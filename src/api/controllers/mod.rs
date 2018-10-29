@@ -2,10 +2,9 @@ use std::fmt::{self, Display};
 use std::sync::Arc;
 
 use futures::prelude::*;
-use hyper::{header::HeaderValue, header::AUTHORIZATION, Body, HeaderMap, Method, Response, Uri};
+use hyper::{header::HeaderValue, Body, HeaderMap, Method, Response, Uri};
 
 use super::error::*;
-use models::*;
 use services::{BitcoinService, EthereumService};
 
 mod bitcoin;

@@ -1,9 +1,7 @@
 use std::fmt;
 use std::fmt::Display;
 
-use client::ErrorKind as ClientErrorKind;
 use failure::{Backtrace, Context, Fail};
-use validator::ValidationErrors;
 
 #[derive(Debug)]
 pub struct Error {

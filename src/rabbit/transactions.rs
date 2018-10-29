@@ -141,7 +141,6 @@ impl TransactionPublisherImpl {
 
 impl TransactionPublisher for TransactionPublisherImpl {
     fn publish(&self, txs: Vec<BlockchainTransaction>) -> Box<Future<Item = (), Error = Error> + Send> {
-        let self_clone = self.clone();
         Box::new(
             self.get_channel()
                 .and_then(move |channel| {

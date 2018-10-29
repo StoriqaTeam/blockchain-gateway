@@ -24,7 +24,6 @@ mod utils;
 use self::controllers::*;
 use self::error::*;
 use models::*;
-use prelude::*;
 use serde_json;
 
 #[derive(Clone)]
