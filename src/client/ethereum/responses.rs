@@ -40,7 +40,7 @@ pub struct TransactionResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 pub struct PostTransactionsResponse {
-    pub result: TxHash,
+    pub result: String,
 }
 
 #[derive(Deserialize)]
