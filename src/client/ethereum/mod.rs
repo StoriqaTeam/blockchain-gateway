@@ -120,14 +120,15 @@ impl EthereumClientImpl {
     }
 
     fn get_eth_partial_transaction(&self, hash: String) -> impl Future<Item = PartialBlockchainTransaction, Error = Error> + Send {
+        let hash = format!("0x{}", hash);
         let params = json!({
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_getTransactionByHash",
             "params": [hash]
         });
-        self.get_rpc_response::<TransactionResponse>(&params)
-            .and_then(EthereumClientImpl::eth_response_to_partial_tx)
+        self.get_rpc_response::<TransactionByHashResponse>(&params)
+            .and_then(|resp| EthereumClientImpl::eth_response_to_partial_tx(resp.result))
     }
 
     fn eth_response_to_partial_tx(resp: TransactionResponse) -> Result<PartialBlockchainTransaction, Error> {
@@ -214,6 +215,7 @@ impl EthereumClientImpl {
         hash: String,
         current_block: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send> {
+        let hash = format!("0x{}", hash);
         let params = json!({
             "jsonrpc": "2.0",
             "id": 1,
@@ -292,6 +294,7 @@ impl EthereumClientImpl {
     }
 
     fn get_block_number_by_hash(&self, hash: String) -> impl Future<Item = u64, Error = Error> + Send {
+        let hash = format!("0x{}", hash);
         let params = json!({
             "jsonrpc": "2.0",
             "id": 1,
@@ -299,7 +302,9 @@ impl EthereumClientImpl {
             "params": [hash, false]
         });
 
-        self.get_rpc_response::<ShortBlockResponse>(&params).map(|resp| resp.result.number)
+        self.get_rpc_response::<ShortBlockResponse>(&params)
+            .and_then(|resp| EthereumClientImpl::parse_hex(resp.result.number))
+            .map(|x| x as u64)
     }
 
     fn parse_hex(s: String) -> Result<u128, Error> {
@@ -337,11 +342,12 @@ impl EthereumClientImpl {
         tx: &PartialBlockchainTransaction,
         current_block: u64,
     ) -> impl Future<Item = BlockchainTransaction, Error = Error> {
+        let hash = format!("0x{}", tx.hash);
         let params = json!({
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_getTransactionReceipt",
-            "params": [tx.hash]
+            "params": [hash]
         });
         let gas_price = tx.gas_price;
         let tx = tx.clone();

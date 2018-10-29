@@ -23,6 +23,12 @@ pub struct BlockResponse {
 
 #[derive(Debug, Clone, Deserialize)]
 #[serde(rename_all = "camelCase")]
+pub struct TransactionByHashResponse {
+    pub result: TransactionResponse,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct TransactionResponse {
     pub block_number: String,
     pub hash: String,
@@ -62,7 +68,7 @@ pub struct ShortBlockResponse {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct ShortBlock {
-    pub number: u64,
+    pub number: String,
 }
 
 #[derive(Debug, Deserialize, Clone)]
