@@ -45,7 +45,7 @@ pub struct PostTransactionsResponse {
 
 #[derive(Deserialize)]
 pub struct StqResponse {
-    pub result: Option<Vec<StqResponseItem>>,
+    pub result: Vec<StqResponseItem>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
