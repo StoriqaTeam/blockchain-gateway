@@ -68,7 +68,6 @@ pub fn start_server() {
     let http_client = Arc::new(HttpClientImpl::new(&config));
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
         http_client.clone(),
-        config.client.blockcypher_token.clone(),
         config.mode.clone(),
         config.client.bitcoin_rpc_url.clone(),
         config.client.bitcoin_rpc_user.clone(),
@@ -320,7 +319,6 @@ fn create_btc_client(config: &Config) -> BitcoinClientImpl {
     let http_client = Arc::new(HttpClientImpl::new(config));
     BitcoinClientImpl::new(
         http_client.clone(),
-        config.client.blockcypher_token.clone(),
         config.mode.clone(),
         config.client.bitcoin_rpc_url.clone(),
         config.client.bitcoin_rpc_user.clone(),

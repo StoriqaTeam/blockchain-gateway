@@ -40,7 +40,6 @@ pub struct Rabbit {
 #[derive(Debug, Deserialize, Clone)]
 pub struct Client {
     pub dns_threads: usize,
-    pub blockcypher_token: String,
     pub infura_key: String,
     pub infura_secret: String,
     pub stq_contract_address: String,

@@ -14,8 +14,8 @@ pub struct UtxoResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
-pub struct PostTransactionsResponse {
-    pub hash: TxHash,
+pub struct RpcSendTransactionsResponse {
+    pub result: TxHash,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -2,7 +2,6 @@ mode = "nightly"
 
 [client]
 dns_threads = 4
-blockcypher_token = "5979b604fb114080b5761dba871009c0"
 bitcoin_rpc_url = "http://localhost:18332"
 bitcoin_rpc_user = "xyz"
 bitcoin_rpc_password = "xyz"
