@@ -30,6 +30,7 @@ extern crate lapin_async;
 extern crate lapin_futures;
 extern crate r2d2;
 extern crate serde_qs;
+extern crate simplelog;
 extern crate tokio;
 extern crate tokio_core;
 extern crate uuid;
@@ -69,7 +70,7 @@ pub fn start_server() {
     // Prepare sentry integration
     let _sentry = sentry_integration::init(config.sentry.as_ref());
     // Prepare logger
-    logger::init(config.graylog.as_ref());
+    logger::init(&config);
 
     let http_client = Arc::new(HttpClientImpl::new(&config));
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(

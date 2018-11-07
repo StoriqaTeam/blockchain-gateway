@@ -3,7 +3,7 @@ use serde::{Deserialize, Deserializer};
 use std::env;
 
 use config_crate::{Config as RawConfig, ConfigError, Environment, File};
-use logger::GrayLogConfig;
+use logger::{FileLogConfig, GrayLogConfig};
 use sentry_integration::SentryConfig;
 
 #[derive(Debug, Deserialize, Clone)]
@@ -16,6 +16,7 @@ pub struct Config {
     pub rabbit: Rabbit,
     pub sentry: Option<SentryConfig>,
     pub graylog: Option<GrayLogConfig>,
+    pub filelog: Option<FileLogConfig>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

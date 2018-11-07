@@ -8,6 +8,7 @@ path = "src/lib.rs"
 name = "blockchain_gateway_lib"
 
 [dependencies]
+base64 = "0.9"
 chrono = "0.4"
 clap = {version = "2", features = ["yaml"]}
 config = "0.9"
@@ -15,24 +16,24 @@ env_logger = "0.5"
 failure = "0.1"
 futures = "0.1"
 futures-cpupool = "0.1"
+gelf = { git = "https://github.com/StoriqaTeam/gelf-rust", rev = "b05956244f020bb4a62b859bd1025b6c699b2628" }
 http_router = "0.1"
 hyper = "0.12"
 hyper-tls = "0.3"
-gelf = { git = "https://github.com/StoriqaTeam/gelf-rust", rev = "b05956244f020bb4a62b859bd1025b6c699b2628" }
-uuid = { version = "0.6", features = ["use_std", "v4", "serde"] }
-log = { version = "0.4", features = ["std", "serde"] }
-sentry = "0.12"
-r2d2 = "0.8"
-regex = "1"
 lapin-async = {version = "0.13", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
 lapin-futures = {version = "0.13.1", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
+log = { version = "0.4", features = ["std", "serde"] }
+r2d2 = "0.8"
+rand = "0.5"
+regex = "1"
+rlp = { version = "0.2.4", features = ["ethereum"] }
+sentry = "0.12"
 serde = "1"
 serde_derive = "1"
 serde_json = { version = "1", features = ["arbitrary_precision"] }
 serde_qs = "0.4"
-validator = "0.8"
-rand = "0.5"
-base64 = "0.9"
-tokio-core = "0.1"
+simplelog = "0.5.3"
 tokio = "0.1"
-rlp = { version = "0.2.4", features = ["ethereum"] }
+tokio-core = "0.1"
+uuid = { version = "0.6", features = ["use_std", "v4", "serde"] }
+validator = "0.8"
