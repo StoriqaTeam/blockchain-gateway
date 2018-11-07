@@ -12,9 +12,12 @@ extern crate http_router;
 extern crate sentry;
 
 extern crate base64;
+extern crate chrono;
 extern crate config as config_crate;
+extern crate env_logger;
 extern crate futures;
 extern crate futures_cpupool;
+extern crate gelf;
 extern crate hyper;
 extern crate hyper_tls;
 extern crate rand;
@@ -37,6 +40,7 @@ mod macros;
 mod api;
 mod client;
 mod config;
+mod logger;
 mod models;
 mod pollers;
 mod prelude;
@@ -64,6 +68,8 @@ pub fn start_server() {
     let config = get_config();
     // Prepare sentry integration
     let _sentry = sentry_integration::init(config.sentry.as_ref());
+    // Prepare logger
+    logger::init(config.graylog.as_ref());
 
     let http_client = Arc::new(HttpClientImpl::new(&config));
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
