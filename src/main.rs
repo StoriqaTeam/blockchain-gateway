@@ -1,13 +1,10 @@
 #[macro_use]
 extern crate clap;
 extern crate blockchain_gateway_lib;
-extern crate env_logger;
 
 use clap::App;
 
 fn main() {
-    env_logger::init();
-
     let yaml = load_yaml!("cli.yml");
     let mut app = App::from_yaml(yaml);
     let matches = app.clone().get_matches();

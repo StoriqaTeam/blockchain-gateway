@@ -265,8 +265,7 @@ impl EthereumClientImpl {
             .map(|s| {
                 let slice = &s[(s.len() - ADDRESS_LENGTH)..];
                 slice.to_string()
-            })
-            .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
+            }).ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let block_number = EthereumClientImpl::parse_hex(log.block_number).map(|x| x as u64)?;
         let value = EthereumClientImpl::parse_hex(log.data).map(Amount::new)?;
         let log_index = EthereumClientImpl::parse_hex(log.log_index)?;
