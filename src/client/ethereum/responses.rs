@@ -48,6 +48,14 @@ pub struct StqResponse {
     pub result: Vec<StqResponseItem>,
 }
 
+impl StqResponse {
+    pub fn concat(self, other: StqResponse) -> Self {
+        StqResponse {
+            result: self.result.into_iter().chain(other.result.into_iter()).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StqResponseItem {

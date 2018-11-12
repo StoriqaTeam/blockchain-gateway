@@ -174,18 +174,31 @@ impl EthereumClientImpl {
         let self_clone2 = self.clone();
         let from_block = format!("0x{:x}", from_block);
         let to_block = format!("0x{:x}", to_block);
-        let params = json!({
+        let params_approval = json!({
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_getLogs",
             "params": [{
                 "address": self.stq_contract_address,
-                "topics": [self.stq_transfer_topic, self.stq_approval_topic],
+                "topics": [self.stq_approval_topic],
                 "fromBlock": from_block,
                 "toBlock": to_block,
             }]
         });
-        self.get_rpc_response::<StqResponse>(&params)
+        let params_transfer = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_getLogs",
+            "params": [{
+                "address": self.stq_contract_address,
+                "topics": [self.stq_transfer_topic],
+                "fromBlock": from_block,
+                "toBlock": to_block,
+            }]
+        });
+        self.get_rpc_response::<StqResponse>(&params_approval)
+            .join(self.get_rpc_response::<StqResponse>(&params_transfer))
+            .map(|(approval_resp, transfer_resp)| approval_resp.concat(transfer_resp))
             .into_stream()
             .map(|resp| stream::iter_ok(resp.result.into_iter()))
             .flatten()
@@ -226,12 +239,13 @@ impl EthereumClientImpl {
         let self_clone4 = self.clone();
         let stq_contract_address = self.stq_contract_address.clone();
         let stq_transfer_topic = self.stq_transfer_topic.clone();
+        let stq_approval_topic = self.stq_approval_topic.clone();
         let hash_clone = hash.clone();
 
         Box::new(
             self.get_eth_partial_transaction(hash)
                 .and_then(move |partial_eth_tx| {
-                    let params = json!({
+                    let params_transfer = json!({
                         "jsonrpc": "2.0",
                         "id": 1,
                         "method": "eth_getLogs",
@@ -242,7 +256,21 @@ impl EthereumClientImpl {
                             "toBlock": format!("0x{:x}", partial_eth_tx.block_number),
                         }]
                     });
-                    self_clone3.get_rpc_response::<StqResponse>(&params)
+                    let params_approval = json!({
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "eth_getLogs",
+                        "params": [{
+                            "address": stq_contract_address,
+                            "topics": [stq_approval_topic],
+                            "fromBlock": format!("0x{:x}", partial_eth_tx.block_number),
+                            "toBlock": format!("0x{:x}", partial_eth_tx.block_number),
+                        }]
+                    });
+                    self_clone3
+                        .get_rpc_response::<StqResponse>(&params_approval)
+                        .join(self_clone3.get_rpc_response::<StqResponse>(&params_transfer))
+                        .map(|(approval_resp, transfer_resp)| approval_resp.concat(transfer_resp))
                 }).into_stream()
                 .map(|stq_resp| stream::iter_ok(stq_resp.result.into_iter()))
                 .flatten()
