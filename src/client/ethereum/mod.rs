@@ -49,6 +49,7 @@ pub struct EthereumClientImpl {
     infura_url: String,
     stq_contract_address: String,
     stq_transfer_topic: String,
+    stq_approval_topic: String,
 }
 
 impl EthereumClientImpl {
@@ -58,6 +59,7 @@ impl EthereumClientImpl {
         api_key: String,
         stq_contract_address: String,
         stq_transfer_topic: String,
+        stq_approval_topic: String,
     ) -> Self {
         let infura_url = match mode {
             Mode::Production => format!("https://mainnet.infura.io/{}", api_key),
@@ -68,6 +70,7 @@ impl EthereumClientImpl {
             infura_url,
             stq_contract_address,
             stq_transfer_topic,
+            stq_approval_topic,
         }
     }
 }
@@ -156,6 +159,7 @@ impl EthereumClientImpl {
             block_number,
             currency: Currency::Eth,
             gas_price,
+            erc20_operation_kind: None,
         })
     }
 
@@ -167,6 +171,7 @@ impl EthereumClientImpl {
         to_block: u64,
     ) -> impl Stream<Item = PartialBlockchainTransaction, Error = Error> + Send {
         let self_clone = self.clone();
+        let self_clone2 = self.clone();
         let from_block = format!("0x{:x}", from_block);
         let to_block = format!("0x{:x}", to_block);
         let params = json!({
@@ -175,7 +180,7 @@ impl EthereumClientImpl {
             "method": "eth_getLogs",
             "params": [{
                 "address": self.stq_contract_address,
-                "topics": [self.stq_transfer_topic],
+                "topics": [self.stq_transfer_topic, self.stq_approval_topic],
                 "fromBlock": from_block,
                 "toBlock": to_block,
             }]
@@ -188,7 +193,7 @@ impl EthereumClientImpl {
                 self_clone
                     .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                     .map(|tx| (tx_resp, tx.gas_price))
-            }).and_then(|(tx_resp, gas_price)| EthereumClientImpl::stq_response_to_partial_tx(tx_resp, gas_price))
+            }).and_then(move |(tx_resp, gas_price)| self_clone2.stq_response_to_partial_tx(tx_resp, gas_price))
     }
 
     fn last_stq_transactions_with_current_block(
@@ -218,6 +223,7 @@ impl EthereumClientImpl {
         let self_clone = self.clone();
         let self_clone2 = self.clone();
         let self_clone3 = self.clone();
+        let self_clone4 = self.clone();
         let stq_contract_address = self.stq_contract_address.clone();
         let stq_transfer_topic = self.stq_transfer_topic.clone();
         let hash_clone = hash.clone();
@@ -245,12 +251,25 @@ impl EthereumClientImpl {
                     self_clone
                         .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                         .map(|tx| (tx_resp, tx.gas_price))
-                }).and_then(|(resp, gas_price)| EthereumClientImpl::stq_response_to_partial_tx(resp, gas_price))
+                }).and_then(move |(resp, gas_price)| self_clone4.stq_response_to_partial_tx(resp, gas_price))
                 .and_then(move |partial_tx| self_clone2.partial_tx_to_tx(&partial_tx, current_block)),
         )
     }
 
-    fn stq_response_to_partial_tx(log: StqResponseItem, gas_price: Amount) -> Result<PartialBlockchainTransaction, Error> {
+    fn stq_response_to_partial_tx(&self, log: StqResponseItem, gas_price: Amount) -> Result<PartialBlockchainTransaction, Error> {
+        let topic = log
+            .topics
+            .get(0)
+            .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?
+            .to_string();
+        let erc20_operation_kind = if topic == self.stq_approval_topic {
+            Some(Erc20OperationKind::Approve)
+        } else if topic == self.stq_transfer_topic {
+            Some(Erc20OperationKind::TransferFrom)
+        } else {
+            None
+        };
+
         let from = log
             .topics
             .get(1)
@@ -280,6 +299,7 @@ impl EthereumClientImpl {
             block_number,
             currency: Currency::Stq,
             gas_price,
+            erc20_operation_kind,
         })
     }
 
@@ -375,6 +395,7 @@ impl EthereumClientImpl {
                             currency: tx.currency,
                             fee,
                             confirmations,
+                            erc20_operation_kind: tx.erc20_operation_kind,
                         }
                     })
             })

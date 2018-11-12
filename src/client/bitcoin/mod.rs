@@ -211,6 +211,7 @@ impl BitcoinClientImpl {
             currency: Currency::Btc,
             fee,
             confirmations,
+            erc20_operation_kind: None,
         })
     }
 }

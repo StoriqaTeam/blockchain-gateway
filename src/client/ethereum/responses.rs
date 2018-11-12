@@ -93,4 +93,5 @@ pub struct PartialBlockchainTransaction {
     pub block_number: u64,
     pub currency: Currency,
     pub gas_price: Amount,
+    pub erc20_operation_kind: Option<Erc20OperationKind>,
 }
