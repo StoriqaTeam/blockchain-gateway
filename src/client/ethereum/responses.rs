@@ -63,7 +63,7 @@ pub struct StqResponseItem {
     pub topics: Vec<String>,
     pub data: String,
     pub block_number: String,
-    pub log_index: String,
+    pub transaction_log_index: String,
     pub block_hash: String,
     pub transaction_hash: String,
 }

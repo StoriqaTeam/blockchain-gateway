@@ -315,7 +315,7 @@ impl EthereumClientImpl {
             }).ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let block_number = EthereumClientImpl::parse_hex(log.block_number).map(|x| x as u64)?;
         let value = EthereumClientImpl::parse_hex(log.data).map(Amount::new)?;
-        let log_index = EthereumClientImpl::parse_hex(log.log_index)?;
+        let log_index = EthereumClientImpl::parse_hex(log.transaction_log_index)?;
         // Since there can be many ERC-20 transfers per ETH transaction, we're giving extended hash here
         let hash = format!("{}:{}", log.transaction_hash[2..].to_string(), log_index);
         let from = vec![from];
