@@ -40,6 +40,13 @@ pub struct BlockchainTransactionEntry {
     pub value: Amount,
 }
 
+#[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone, Copy)]
+#[serde(rename_all = "snake_case")]
+pub enum Erc20OperationKind {
+    Approve,
+    TransferFrom,
+}
+
 #[derive(Debug, Serialize, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct BlockchainTransaction {
@@ -50,4 +57,5 @@ pub struct BlockchainTransaction {
     pub currency: Currency,
     pub fee: Amount,
     pub confirmations: usize,
+    pub erc20_operation_kind: Option<Erc20OperationKind>,
 }

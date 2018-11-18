@@ -9,7 +9,7 @@ infura_key = "16a351590d9946989cdc80712e74f25e"
 infura_secret = "b18f14aa53094950a51597600e41c422"
 stq_contract_address = "0x1bf2092a42166b2ae19b7b23752e7d2dab5ba91a"
 stq_transfer_topic = "0xddf252ad1be2c89b69c2b068fc378daa952ba7f163c4a11628f55a4df523b3ef"
-
+stq_approval_topic = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8c7c3b925"
 
 [poller]
 bitcoin_interval_secs = 60

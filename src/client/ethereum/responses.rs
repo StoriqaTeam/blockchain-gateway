@@ -48,6 +48,14 @@ pub struct StqResponse {
     pub result: Vec<StqResponseItem>,
 }
 
+impl StqResponse {
+    pub fn concat(self, other: StqResponse) -> Self {
+        StqResponse {
+            result: self.result.into_iter().chain(other.result.into_iter()).collect(),
+        }
+    }
+}
+
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct StqResponseItem {
@@ -55,7 +63,7 @@ pub struct StqResponseItem {
     pub topics: Vec<String>,
     pub data: String,
     pub block_number: String,
-    pub log_index: String,
+    pub transaction_log_index: String,
     pub block_hash: String,
     pub transaction_hash: String,
 }
@@ -93,4 +101,5 @@ pub struct PartialBlockchainTransaction {
     pub block_number: u64,
     pub currency: Currency,
     pub gas_price: Amount,
+    pub erc20_operation_kind: Option<Erc20OperationKind>,
 }

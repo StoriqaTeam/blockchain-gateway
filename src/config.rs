@@ -46,6 +46,7 @@ pub struct Client {
     pub infura_secret: String,
     pub stq_contract_address: String,
     pub stq_transfer_topic: String,
+    pub stq_approval_topic: String,
     pub bitcoin_rpc_url: String,
     pub bitcoin_rpc_user: String,
     pub bitcoin_rpc_password: String,

@@ -49,6 +49,7 @@ pub struct EthereumClientImpl {
     infura_url: String,
     stq_contract_address: String,
     stq_transfer_topic: String,
+    stq_approval_topic: String,
 }
 
 impl EthereumClientImpl {
@@ -58,6 +59,7 @@ impl EthereumClientImpl {
         api_key: String,
         stq_contract_address: String,
         stq_transfer_topic: String,
+        stq_approval_topic: String,
     ) -> Self {
         let infura_url = match mode {
             Mode::Production => format!("https://mainnet.infura.io/{}", api_key),
@@ -68,6 +70,7 @@ impl EthereumClientImpl {
             infura_url,
             stq_contract_address,
             stq_transfer_topic,
+            stq_approval_topic,
         }
     }
 }
@@ -156,6 +159,7 @@ impl EthereumClientImpl {
             block_number,
             currency: Currency::Eth,
             gas_price,
+            erc20_operation_kind: None,
         })
     }
 
@@ -167,9 +171,21 @@ impl EthereumClientImpl {
         to_block: u64,
     ) -> impl Stream<Item = PartialBlockchainTransaction, Error = Error> + Send {
         let self_clone = self.clone();
+        let self_clone2 = self.clone();
         let from_block = format!("0x{:x}", from_block);
         let to_block = format!("0x{:x}", to_block);
-        let params = json!({
+        let params_approval = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_getLogs",
+            "params": [{
+                "address": self.stq_contract_address,
+                "topics": [self.stq_approval_topic],
+                "fromBlock": from_block,
+                "toBlock": to_block,
+            }]
+        });
+        let params_transfer = json!({
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_getLogs",
@@ -180,7 +196,9 @@ impl EthereumClientImpl {
                 "toBlock": to_block,
             }]
         });
-        self.get_rpc_response::<StqResponse>(&params)
+        self.get_rpc_response::<StqResponse>(&params_approval)
+            .join(self.get_rpc_response::<StqResponse>(&params_transfer))
+            .map(|(approval_resp, transfer_resp)| approval_resp.concat(transfer_resp))
             .into_stream()
             .map(|resp| stream::iter_ok(resp.result.into_iter()))
             .flatten()
@@ -188,7 +206,7 @@ impl EthereumClientImpl {
                 self_clone
                     .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                     .map(|tx| (tx_resp, tx.gas_price))
-            }).and_then(|(tx_resp, gas_price)| EthereumClientImpl::stq_response_to_partial_tx(tx_resp, gas_price))
+            }).and_then(move |(tx_resp, gas_price)| self_clone2.stq_response_to_partial_tx(tx_resp, gas_price))
     }
 
     fn last_stq_transactions_with_current_block(
@@ -218,14 +236,16 @@ impl EthereumClientImpl {
         let self_clone = self.clone();
         let self_clone2 = self.clone();
         let self_clone3 = self.clone();
+        let self_clone4 = self.clone();
         let stq_contract_address = self.stq_contract_address.clone();
         let stq_transfer_topic = self.stq_transfer_topic.clone();
+        let stq_approval_topic = self.stq_approval_topic.clone();
         let hash_clone = hash.clone();
 
         Box::new(
             self.get_eth_partial_transaction(hash)
                 .and_then(move |partial_eth_tx| {
-                    let params = json!({
+                    let params_transfer = json!({
                         "jsonrpc": "2.0",
                         "id": 1,
                         "method": "eth_getLogs",
@@ -236,7 +256,21 @@ impl EthereumClientImpl {
                             "toBlock": format!("0x{:x}", partial_eth_tx.block_number),
                         }]
                     });
-                    self_clone3.get_rpc_response::<StqResponse>(&params)
+                    let params_approval = json!({
+                        "jsonrpc": "2.0",
+                        "id": 1,
+                        "method": "eth_getLogs",
+                        "params": [{
+                            "address": stq_contract_address,
+                            "topics": [stq_approval_topic],
+                            "fromBlock": format!("0x{:x}", partial_eth_tx.block_number),
+                            "toBlock": format!("0x{:x}", partial_eth_tx.block_number),
+                        }]
+                    });
+                    self_clone3
+                        .get_rpc_response::<StqResponse>(&params_approval)
+                        .join(self_clone3.get_rpc_response::<StqResponse>(&params_transfer))
+                        .map(|(approval_resp, transfer_resp)| approval_resp.concat(transfer_resp))
                 }).into_stream()
                 .map(|stq_resp| stream::iter_ok(stq_resp.result.into_iter()))
                 .flatten()
@@ -245,12 +279,25 @@ impl EthereumClientImpl {
                     self_clone
                         .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                         .map(|tx| (tx_resp, tx.gas_price))
-                }).and_then(|(resp, gas_price)| EthereumClientImpl::stq_response_to_partial_tx(resp, gas_price))
+                }).and_then(move |(resp, gas_price)| self_clone4.stq_response_to_partial_tx(resp, gas_price))
                 .and_then(move |partial_tx| self_clone2.partial_tx_to_tx(&partial_tx, current_block)),
         )
     }
 
-    fn stq_response_to_partial_tx(log: StqResponseItem, gas_price: Amount) -> Result<PartialBlockchainTransaction, Error> {
+    fn stq_response_to_partial_tx(&self, log: StqResponseItem, gas_price: Amount) -> Result<PartialBlockchainTransaction, Error> {
+        let topic = log
+            .topics
+            .get(0)
+            .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?
+            .to_string();
+        let erc20_operation_kind = if topic == self.stq_approval_topic {
+            Some(Erc20OperationKind::Approve)
+        } else if topic == self.stq_transfer_topic {
+            Some(Erc20OperationKind::TransferFrom)
+        } else {
+            None
+        };
+
         let from = log
             .topics
             .get(1)
@@ -268,7 +315,7 @@ impl EthereumClientImpl {
             }).ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let block_number = EthereumClientImpl::parse_hex(log.block_number).map(|x| x as u64)?;
         let value = EthereumClientImpl::parse_hex(log.data).map(Amount::new)?;
-        let log_index = EthereumClientImpl::parse_hex(log.log_index)?;
+        let log_index = EthereumClientImpl::parse_hex(log.transaction_log_index)?;
         // Since there can be many ERC-20 transfers per ETH transaction, we're giving extended hash here
         let hash = format!("{}:{}", log.transaction_hash[2..].to_string(), log_index);
         let from = vec![from];
@@ -280,6 +327,7 @@ impl EthereumClientImpl {
             block_number,
             currency: Currency::Stq,
             gas_price,
+            erc20_operation_kind,
         })
     }
 
@@ -375,6 +423,7 @@ impl EthereumClientImpl {
                             currency: tx.currency,
                             fee,
                             confirmations,
+                            erc20_operation_kind: tx.erc20_operation_kind,
                         }
                     })
             })
