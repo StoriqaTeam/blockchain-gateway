@@ -86,6 +86,7 @@ impl Service for ApiService {
                         config.client.stq_contract_address.clone(),
                         config.client.stq_transfer_topic.clone(),
                         config.client.stq_approval_topic.clone(),
+                        config.client.stq_balance_method.clone(),
                     ));
 
                     let bitcoin_service = Arc::new(BitcoinServiceImpl::new(bitcoin_client));

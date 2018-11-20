@@ -11,6 +11,11 @@ pub struct BlockNumberResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct BalanceResponse {
+    pub result: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct BlockByNumberResponse {
     pub result: Option<BlockResponse>,
 }

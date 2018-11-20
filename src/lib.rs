@@ -87,6 +87,7 @@ pub fn start_server() {
         config.client.stq_contract_address.clone(),
         config.client.stq_transfer_topic.clone(),
         config.client.stq_approval_topic.clone(),
+        config.client.stq_balance_method.clone(),
     ));
 
     let config_clone = config.clone();
@@ -343,6 +344,7 @@ fn create_eth_client(config: &Config) -> EthereumClientImpl {
         config.client.stq_contract_address.clone(),
         config.client.stq_transfer_topic.clone(),
         config.client.stq_approval_topic.clone(),
+        config.client.stq_balance_method.clone(),
     )
 }
 
