@@ -221,14 +221,12 @@ impl BitcoinClientImpl {
 
 impl BitcoinClient for BitcoinClientImpl {
     fn get_balance(&self, address: BitcoinAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
-        let address = format!("{}", address);
-        let params = json!({
-            "jsonrpc": "2",
-            "id": "1",
-            "method": "getbalance",
-            "params": [address, 1, true]
-        });
-        Box::new(self.get_rpc_response::<RpcBalanceResponse>(&params).map(|response| response.result))
+        Box::new(self.get_utxos(address).and_then(|utxos| {
+            utxos
+                .into_iter()
+                .fold(Some(Amount::new(0)), |acc, elem| acc.and_then(|acc| acc.checked_add(elem.value)))
+                .ok_or(ectx!(err ErrorContext::Overflow, ErrorKind::Internal))
+        }))
     }
     fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send> {
         let params = json!({
