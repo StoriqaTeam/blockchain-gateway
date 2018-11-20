@@ -67,6 +67,8 @@ impl Service for ApiService {
                         GET /v1/bitcoin/{address: BitcoinAddress}/utxos => get_utxos,
                         POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
                         GET /v1/ethereum/{address: EthereumAddress}/nonce => get_nonce,
+                        GET /v1/ethereum/{address: EthereumAddress}/balance => get_eth_balance,
+                        GET /v1/storiqa/{address: EthereumAddress}/balance => get_stq_balance,
                         POST /v1/ethereum/transactions/raw => post_ethereum_transactions,
                         _ => not_found,
                     };
@@ -86,6 +88,7 @@ impl Service for ApiService {
                         config.client.stq_contract_address.clone(),
                         config.client.stq_transfer_topic.clone(),
                         config.client.stq_approval_topic.clone(),
+                        config.client.stq_balance_method.clone(),
                     ));
 
                     let bitcoin_service = Arc::new(BitcoinServiceImpl::new(bitcoin_client));

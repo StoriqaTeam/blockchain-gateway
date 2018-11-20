@@ -112,6 +112,78 @@ paths:
           $ref: '#/components/responses/BadRequest'
         500:
           $ref: '#/components/responses/Internal'
+  /bitcoin/{address}/balance/:
+    get:
+      summary: Get balance for address in satoshis
+      tags:
+        - bitcoin
+      parameters:
+        - $ref: '#/components/parameters/EthereumAddressParam'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                    description: balance in satoshis
+                    example: 129
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+  /ethereum/{address}/balance/:
+    get:
+      summary: Get balance for address in wei
+      tags:
+        - ethereum
+      parameters:
+        - $ref: '#/components/parameters/EthereumAddressParam'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                    description: balance in wei
+                    example: 129
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
+  /storiqa/{address}/balance/:
+    get:
+      summary: Get balance for address in stq-wei
+      tags:
+        - stq
+      parameters:
+        - $ref: '#/components/parameters/EthereumAddressParam'
+      responses:
+        200:
+          description: Ok
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  balance:
+                    type: integer
+                    description: balance in stq-wei
+                    example: 129
+        400:
+          $ref: '#/components/responses/BadRequest'
+        500:
+          $ref: '#/components/responses/Internal'
+
 
 
 components:

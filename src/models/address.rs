@@ -22,6 +22,12 @@ impl FromStr for BitcoinAddress {
 #[derive(Debug, Serialize, Deserialize, PartialEq, Eq, Clone)]
 pub struct EthereumAddress(String);
 
+impl EthereumAddress {
+    pub fn into_inner(self) -> String {
+        self.0
+    }
+}
+
 impl Display for EthereumAddress {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(&self.0)

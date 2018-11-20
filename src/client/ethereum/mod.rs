@@ -17,11 +17,17 @@ use utils::read_body;
 pub trait EthereumClient: Send + Sync + 'static {
     /// Get account nonce (needed for creating transactions)
     fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send>;
+
     /// Send raw eth/stq transaction to blockchain
     fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
+
     /// Get transaction by hash. Since getting block_number from transaction is not yet
     /// supported, you need to provide one in arguments
     fn get_eth_transaction(&self, hash: String) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send>;
+
+    /// Get latest wei balance
+    fn get_eth_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send>;
+
     /// Get transactions from blocks starting from `start_block_hash` (or the most recent block if not specified)
     /// and fetch previous blocks. Total number of blocks = `blocks_count`.
     /// `blocks_count` should be greater than 0.
@@ -30,15 +36,20 @@ pub trait EthereumClient: Send + Sync + 'static {
         start_block_hash: Option<String>,
         blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
+
     /// Same as `get_eth_transaction` for stq. Since there could be many stq transfers in one transaction
     /// we return Stream here.
     fn get_stq_transactions(&self, hash: String) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
+
     /// Same as `last_eth_transactions` for stq
     fn last_stq_transactions(
         &self,
         start_block_hash: Option<String>,
         blocks_count: u64,
     ) -> Box<Stream<Item = BlockchainTransaction, Error = Error> + Send>;
+
+    /// Get latest stq-wei balance
+    fn get_stq_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send>;
 }
 
 const ADDRESS_LENGTH: usize = 40;
@@ -50,6 +61,7 @@ pub struct EthereumClientImpl {
     stq_contract_address: String,
     stq_transfer_topic: String,
     stq_approval_topic: String,
+    stq_balance_method: String,
 }
 
 impl EthereumClientImpl {
@@ -60,6 +72,7 @@ impl EthereumClientImpl {
         stq_contract_address: String,
         stq_transfer_topic: String,
         stq_approval_topic: String,
+        stq_balance_method: String,
     ) -> Self {
         let infura_url = match mode {
             Mode::Production => format!("https://mainnet.infura.io/{}", api_key),
@@ -71,6 +84,7 @@ impl EthereumClientImpl {
             stq_contract_address,
             stq_transfer_topic,
             stq_approval_topic,
+            stq_balance_method,
         }
     }
 }
@@ -432,6 +446,21 @@ impl EthereumClientImpl {
 }
 
 impl EthereumClient for EthereumClientImpl {
+    /// Get latest wei balance
+    fn get_eth_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
+        let address = format!("0x{}", address);
+        let params = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_getBalance",
+            "params": [address, "latest"]
+        });
+        Box::new(
+            self.get_rpc_response::<BalanceResponse>(&params)
+                .and_then(|resp| EthereumClientImpl::parse_hex(resp.result).map(Amount::new)),
+        )
+    }
+
     fn last_eth_transactions(
         &self,
         start_block_hash: Option<String>,
@@ -455,6 +484,25 @@ impl EthereumClient for EthereumClientImpl {
         Box::new(
             f1.join(f2)
                 .and_then(move |(current_block, partial_tx)| self_clone.partial_tx_to_tx(&partial_tx, current_block)),
+        )
+    }
+
+    /// Get latest stq-wei balance
+    fn get_stq_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
+        let address = match serialize_address(address) {
+            Ok(address) => address,
+            Err(e) => return Box::new(Err(e).into_future()),
+        };
+        let data = format!("{}{}", self.stq_balance_method, address);
+        let params = json!({
+            "jsonrpc": "2.0",
+            "id": 1,
+            "method": "eth_call",
+            "params": [{"to": self.stq_contract_address, "data": data}]
+        });
+        Box::new(
+            self.get_rpc_response::<BalanceResponse>(&params)
+                .and_then(|resp| EthereumClientImpl::parse_hex(resp.result).map(Amount::new)),
         )
     }
 
@@ -513,4 +561,43 @@ impl EthereumClient for EthereumClientImpl {
                 .map(|resp| TxHash::new(resp.result[2..].to_string())),
         )
     }
+}
+
+pub fn bytes_to_hex(bytes: &[u8]) -> String {
+    let mut res = String::with_capacity(bytes.len() * 2);
+    for byte in bytes.iter() {
+        res.push_str(&format!("{:02x}", byte));
+    }
+    res
+}
+
+pub fn hex_to_bytes(hex: String) -> Result<Vec<u8>, Error> {
+    let chars: Vec<char> = hex.clone().chars().collect();
+    chars
+        .chunks(2)
+        .map(|chunk| {
+            let hex = hex.clone();
+            if chunk.len() < 2 {
+                let e: Error = ErrorKind::BadRequest.into();
+                return Err(ectx!(err e, ErrorKind::BadRequest => hex));
+            }
+            let string = format!("{}{}", chunk[0], chunk[1]);
+            u8::from_str_radix(&string, 16).map_err(ectx!(ErrorKind::BadRequest => hex))
+        }).collect()
+}
+
+fn serialize_address(address: EthereumAddress) -> Result<String, Error> {
+    hex_to_bytes(address.into_inner())
+        .map(|data| to_padded_32_bytes(&data))
+        .map(|bytes| bytes_to_hex(&bytes))
+}
+
+fn to_padded_32_bytes(data: &[u8]) -> Vec<u8> {
+    let zeros_len = 32 - data.len();
+    let mut res = Vec::with_capacity(32);
+    for _ in 0..zeros_len {
+        res.push(0);
+    }
+    res.extend(data.iter());
+    res
 }

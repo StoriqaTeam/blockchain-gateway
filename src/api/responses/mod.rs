@@ -8,6 +8,12 @@ pub struct NonceResponse {
 
 #[derive(Debug, Serialize, Clone)]
 #[serde(rename_all = "camelCase")]
+pub struct BalanceResponse {
+    pub balance: Amount,
+}
+
+#[derive(Debug, Serialize, Clone)]
+#[serde(rename_all = "camelCase")]
 pub struct TxHashResponse {
     pub tx_hash: TxHash,
 }
