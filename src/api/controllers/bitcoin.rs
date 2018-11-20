@@ -1,5 +1,5 @@
 use super::super::requests::*;
-use super::super::responses::TxHashResponse;
+use super::super::responses::{BalanceResponse, TxHashResponse};
 use super::super::utils::{parse_body, response_with_model};
 use super::Context;
 use super::ControllerFuture;
@@ -13,6 +13,16 @@ pub fn get_utxos(ctx: &Context, address: BitcoinAddress) -> ControllerFuture {
             .get_utxos(address)
             .map_err(ectx!(convert => address_clone))
             .and_then(|utxos| response_with_model(&utxos)),
+    )
+}
+
+pub fn get_btc_balance(ctx: &Context, address: BitcoinAddress) -> ControllerFuture {
+    let address_clone = address.clone();
+    Box::new(
+        ctx.bitcoin_service
+            .get_balance(address)
+            .map_err(ectx!(convert => address_clone))
+            .and_then(|balance| response_with_model(&BalanceResponse { balance })),
     )
 }
 
