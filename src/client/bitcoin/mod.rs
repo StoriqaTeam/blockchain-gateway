@@ -19,6 +19,9 @@ use utils::read_body;
 pub trait BitcoinClient: Send + Sync + 'static {
     /// Get available Utxos for bitcoin address
     fn get_utxos(&self, address: BitcoinAddress) -> Box<Future<Item = Vec<Utxo>, Error = Error> + Send>;
+    /// Get balance for bitcoin address
+    fn get_balance(&self, address: BitcoinAddress) -> Box<Future<Item = Amount, Error = Error> + Send>;
+
     /// Send raw transaction to blockchain
     fn send_raw_tx(&self, tx: RawBitcoinTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
     /// Get transaction by hash. Since getting block_number from transaction is not yet
@@ -217,6 +220,16 @@ impl BitcoinClientImpl {
 }
 
 impl BitcoinClient for BitcoinClientImpl {
+    fn get_balance(&self, address: BitcoinAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
+        let address = format!("{}", address);
+        let params = json!({
+            "jsonrpc": "2",
+            "id": "1",
+            "method": "getbalance",
+            "params": [address, 1, true]
+        });
+        Box::new(self.get_rpc_response::<RpcBalanceResponse>(&params).map(|response| response.result))
+    }
     fn get_transaction(&self, hash: String, block_number: u64) -> Box<Future<Item = BlockchainTransaction, Error = Error> + Send> {
         let params = json!({
             "jsonrpc": "2",

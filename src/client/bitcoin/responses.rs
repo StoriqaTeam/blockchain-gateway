@@ -57,6 +57,12 @@ pub struct RpcRawTransactionResponse {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct RpcBalanceResponse {
+    #[serde(deserialize_with = "de_bitcoin_decimal")]
+    pub result: Amount,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct RpcBestBlockResponse {
     pub result: String,
 }

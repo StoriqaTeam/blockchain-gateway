@@ -65,6 +65,7 @@ impl Service for ApiService {
                 .and_then(move |body| {
                     let router = router! {
                         GET /v1/bitcoin/{address: BitcoinAddress}/utxos => get_utxos,
+                        GET /v1/bitcoin/{address: BitcoinAddress}/balance => get_btc_balance,
                         POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
                         GET /v1/ethereum/{address: EthereumAddress}/nonce => get_nonce,
                         GET /v1/ethereum/{address: EthereumAddress}/balance => get_eth_balance,
