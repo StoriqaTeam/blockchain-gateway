@@ -67,6 +67,8 @@ impl Service for ApiService {
                         GET /v1/bitcoin/{address: BitcoinAddress}/utxos => get_utxos,
                         POST /v1/bitcoin/transactions/raw => post_bitcoin_transactions,
                         GET /v1/ethereum/{address: EthereumAddress}/nonce => get_nonce,
+                        GET /v1/ethereum/{address: EthereumAddress}/balance => get_eth_balance,
+                        GET /v1/storiqa/{address: EthereumAddress}/balance => get_stq_balance,
                         POST /v1/ethereum/transactions/raw => post_ethereum_transactions,
                         _ => not_found,
                     };

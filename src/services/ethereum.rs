@@ -7,6 +7,8 @@ use prelude::*;
 
 pub trait EthereumService: Send + Sync + 'static {
     fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send>;
+    fn get_eth_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send>;
+    fn get_stq_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send>;
     fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send>;
 }
 
@@ -22,13 +24,23 @@ impl EthereumServiceImpl {
 }
 
 impl EthereumService for EthereumServiceImpl {
+    fn get_eth_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
+        let address_clone = address.clone();
+        Box::new(self.client.get_eth_balance(address).map_err(ectx!(convert => address_clone)))
+    }
+
+    fn get_stq_balance(&self, address: EthereumAddress) -> Box<Future<Item = Amount, Error = Error> + Send> {
+        let address_clone = address.clone();
+        Box::new(self.client.get_stq_balance(address).map_err(ectx!(convert => address_clone)))
+    }
+
     fn get_nonce(&self, address: EthereumAddress) -> Box<Future<Item = u64, Error = Error> + Send> {
         let address_clone = address.clone();
-        Box::new(self.client.get_nonce(address).map_err(ectx!(convert address_clone)))
+        Box::new(self.client.get_nonce(address).map_err(ectx!(convert => address_clone)))
     }
 
     fn send_raw_tx(&self, tx: RawEthereumTransaction) -> Box<Future<Item = TxHash, Error = Error> + Send> {
         let tx_clone = tx.clone();
-        Box::new(self.client.send_raw_tx(tx).map_err(ectx!(convert tx_clone)))
+        Box::new(self.client.send_raw_tx(tx).map_err(ectx!(convert => tx_clone)))
     }
 }

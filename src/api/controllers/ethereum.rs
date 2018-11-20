@@ -19,6 +19,32 @@ pub fn get_nonce(ctx: &Context, address: EthereumAddress) -> ControllerFuture {
     )
 }
 
+pub fn get_eth_balance(ctx: &Context, address: EthereumAddress) -> ControllerFuture {
+    let address_clone = address.clone();
+    Box::new(
+        ctx.ethereum_service
+            .get_eth_balance(address)
+            .map_err(ectx!(convert => address_clone))
+            .and_then(|balance| {
+                let resp = BalanceResponse { balance };
+                response_with_model(&resp)
+            }),
+    )
+}
+
+pub fn get_stq_balance(ctx: &Context, address: EthereumAddress) -> ControllerFuture {
+    let address_clone = address.clone();
+    Box::new(
+        ctx.ethereum_service
+            .get_stq_balance(address)
+            .map_err(ectx!(convert => address_clone))
+            .and_then(|balance| {
+                let resp = BalanceResponse { balance };
+                response_with_model(&resp)
+            }),
+    )
+}
+
 pub fn post_ethereum_transactions(ctx: &Context) -> ControllerFuture {
     let ethereum_service = ctx.ethereum_service.clone();
     let body = ctx.body.clone();
