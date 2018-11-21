@@ -1,16 +1,17 @@
 use std::net::SocketAddr;
 use std::sync::Arc;
 
-use client::HttpClientImpl;
 use failure::{Compat, Fail};
 use futures::future;
 use futures::prelude::*;
 use hyper;
 use hyper::Server;
 use hyper::{service::Service, Body, Request, Response};
+use log::Level;
 
 use super::config::Config;
 use super::utils::{log_and_capture_error, log_error, log_warn};
+use client::HttpClientImpl;
 use client::{BitcoinClientImpl, EthereumClientImpl};
 use services::{BitcoinServiceImpl, EthereumServiceImpl};
 use utils::read_body;
@@ -74,7 +75,7 @@ impl Service for ApiService {
                         _ => not_found,
                     };
 
-                    let http_client = Arc::new(HttpClientImpl::new(&config));
+                    let http_client = Arc::new(HttpClientImpl::new(&config, Level::Debug));
                     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
                         http_client.clone(),
                         config.mode.clone(),
