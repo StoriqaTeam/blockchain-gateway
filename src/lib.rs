@@ -72,7 +72,7 @@ pub fn start_server() {
     // Prepare logger
     logger::init(&config);
 
-    let http_client = Arc::new(HttpClientImpl::new(&config));
+    let http_client = Arc::new(HttpClientImpl::new(&config, log::Level::Trace));
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
         http_client.clone(),
         config.mode.clone(),
@@ -325,7 +325,7 @@ fn create_transactions_publisher(config: &Config) -> impl Future<Item = Transact
 }
 
 fn create_btc_client(config: &Config) -> BitcoinClientImpl {
-    let http_client = Arc::new(HttpClientImpl::new(config));
+    let http_client = Arc::new(HttpClientImpl::new(config, log::Level::Debug));
     BitcoinClientImpl::new(
         http_client.clone(),
         config.mode.clone(),
@@ -336,7 +336,7 @@ fn create_btc_client(config: &Config) -> BitcoinClientImpl {
 }
 
 fn create_eth_client(config: &Config) -> EthereumClientImpl {
-    let http_client = Arc::new(HttpClientImpl::new(config));
+    let http_client = Arc::new(HttpClientImpl::new(config, log::Level::Debug));
     EthereumClientImpl::new(
         http_client.clone(),
         config.mode.clone(),

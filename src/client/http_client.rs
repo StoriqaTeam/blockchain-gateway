@@ -17,14 +17,15 @@ pub trait HttpClient: Send + Sync + 'static {
 #[derive(Clone)]
 pub struct HttpClientImpl {
     cli: hyper::Client<HttpsConnector<HttpConnector>>,
+    log_level: Level,
 }
 
 impl HttpClientImpl {
-    pub fn new(config: &Config) -> Self {
+    pub fn new(config: &Config, log_level: Level) -> Self {
         let connector = HttpsConnector::new(config.client.dns_threads).unwrap();
         // connector.https_only(true);
         let cli = hyper::Client::builder().build(connector);
-        Self { cli }
+        Self { cli, log_level }
     }
 }
 
@@ -32,13 +33,16 @@ impl HttpClient for HttpClientImpl {
     fn request(&self, req: Request<Body>) -> Box<Future<Item = Response<Body>, Error = Error> + Send> {
         let cli = self.cli.clone();
         let level = log::max_level();
+        let self_log_level = self.log_level;
+        let self_log_level_2 = self.log_level;
         let fut = if level == Level::Debug || level == Level::Trace {
             let (parts, body) = req.into_parts();
             Either::A(
                 read_body(body)
                     .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal))
                     .and_then(move |body| {
-                        debug!(
+                        log!(
+                            self_log_level,
                             "HttpClient, sent request {} {}, headers: {:#?}, body: {:?}",
                             parts.method,
                             parts.uri,
@@ -52,8 +56,9 @@ impl HttpClient for HttpClientImpl {
                         read_body(body)
                             .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal))
                             .map(|body| (parts, body))
-                    }).map(|(parts, body)| {
-                        debug!(
+                    }).map(move |(parts, body)| {
+                        log!(
+                            self_log_level_2,
                             "HttpClient, recieved response with status {} headers: {:#?} and body: {:?}",
                             parts.status.as_u16(),
                             parts.headers,
