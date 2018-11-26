@@ -95,7 +95,7 @@ pub struct ShortBlock {
 #[derive(Debug, Deserialize, Clone)]
 #[serde(rename_all = "camelCase")]
 pub struct TransactionReceiptResponse {
-    pub result: TransactionReceipt,
+    pub result: Option<TransactionReceipt>,
 }
 
 #[derive(Debug, Deserialize, Clone)]

@@ -423,10 +423,14 @@ impl EthereumClientImpl {
         let gas_price = tx.gas_price;
         let tx = tx.clone();
         self.get_rpc_response::<TransactionReceiptResponse>(&params).and_then(move |resp| {
+            let result = match resp.result {
+                Some(res) => res,
+                None => return futures::future::Either::A(Err(ErrorKind::NoReceipt.into()).into_future()),
+            };
             let resp_clone = resp.clone();
-            let gas_used = EthereumClientImpl::parse_hex(resp.result.gas_used).map(Amount::new).into_future();
-            let block_number = EthereumClientImpl::parse_hex(resp.result.block_number).into_future();
-            gas_used.join(block_number).and_then(move |(gas_used, block_number)| {
+            let gas_used = EthereumClientImpl::parse_hex(result.gas_used).map(Amount::new).into_future();
+            let block_number = EthereumClientImpl::parse_hex(result.block_number).into_future();
+            futures::future::Either::B(gas_used.join(block_number).and_then(move |(gas_used, block_number)| {
                 gas_used
                     .checked_mul(gas_price)
                     .ok_or(ectx!(err ErrorContext::Overflow, ErrorKind::Internal => resp_clone, gas_price))
@@ -443,7 +447,7 @@ impl EthereumClientImpl {
                             erc20_operation_kind: tx.erc20_operation_kind,
                         }
                     })
-            })
+            }))
         })
     }
 }

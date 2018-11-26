@@ -28,6 +28,8 @@ pub enum ErrorKind {
     UnknownServerError,
     #[fail(display = "http client error - internal error")]
     Internal,
+    #[fail(display = "http client error - the transaction has no receipt")]
+    NoReceipt,
 }
 
 #[allow(dead_code)]
