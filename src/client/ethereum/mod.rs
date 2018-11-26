@@ -75,8 +75,8 @@ impl EthereumClientImpl {
         stq_balance_method: String,
     ) -> Self {
         let infura_url = match mode {
-            Mode::Production => format!("https://mainnet.infura.io/{}", api_key),
-            _ => format!("https://kovan.infura.io/{}", api_key),
+            Mode::Production => format!("https://mainnet.infura.io/v3/{}", api_key),
+            _ => format!("https://kovan.infura.io/v3/{}", api_key),
         };
         Self {
             http_client,
