@@ -134,6 +134,12 @@ impl EthereumClientImpl {
             .map(move |block_number| self_clone.get_eth_transactions_for_block(block_number))
             .flatten()
             .and_then(move |tx| self_clone2.partial_tx_to_tx(&tx, current_block))
+            .map(Some)
+            .or_else(|e| match e.kind() {
+                // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
+                ErrorKind::NoReceipt => Ok(None),
+                _ => Err(e),
+            }).filter_map(|maybe_item| maybe_item)
     }
 
     fn get_eth_partial_transaction(&self, hash: String) -> impl Future<Item = PartialBlockchainTransaction, Error = Error> + Send {
@@ -240,6 +246,12 @@ impl EthereumClientImpl {
             .map(move |to_block| self_clone.get_stq_transactions_for_blocks(to_block - blocks_count + 1, to_block))
             .flatten()
             .and_then(move |tx| self_clone2.partial_tx_to_tx(&tx, current_block))
+            .map(Some)
+            .or_else(|e| match e.kind() {
+                // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
+                ErrorKind::NoReceipt => Ok(None),
+                _ => Err(e),
+            }).filter_map(|maybe_item| maybe_item)
     }
 
     fn get_stq_transactions_with_current_block(
@@ -294,7 +306,13 @@ impl EthereumClientImpl {
                         .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                         .map(|tx| (tx_resp, tx.gas_price))
                 }).and_then(move |(resp, gas_price)| self_clone4.stq_response_to_partial_tx(resp, gas_price))
-                .and_then(move |partial_tx| self_clone2.partial_tx_to_tx(&partial_tx, current_block)),
+                .and_then(move |partial_tx| self_clone2.partial_tx_to_tx(&partial_tx, current_block))
+                .map(Some)
+                .or_else(|e| match e.kind() {
+                    // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
+                    ErrorKind::NoReceipt => Ok(None),
+                    _ => Err(e),
+                }).filter_map(|maybe_item| maybe_item),
         )
     }
 
@@ -424,7 +442,7 @@ impl EthereumClientImpl {
         let tx = tx.clone();
         self.get_rpc_response::<TransactionReceiptResponse>(&params).and_then(move |resp| {
             let result = match resp.result {
-                Some(res) => res,
+                Some(ref res) => res.clone(),
                 None => return futures::future::Either::A(Err(ErrorKind::NoReceipt.into()).into_future()),
             };
             let resp_clone = resp.clone();
