@@ -68,9 +68,17 @@ pub struct StqResponseItem {
     pub topics: Vec<String>,
     pub data: String,
     pub block_number: String,
+
+    #[serde(default = "default_tx_log_idx")]
     pub transaction_log_index: String,
     pub block_hash: String,
     pub transaction_hash: String,
+}
+
+// Todo - there's no transaction_log_index on mainnnet
+// This workaround won't work for several txs per transfer
+fn default_tx_log_idx() -> String {
+    "0x0".to_string()
 }
 
 #[derive(Debug, Deserialize, Clone)]
