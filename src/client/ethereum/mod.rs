@@ -384,23 +384,26 @@ impl EthereumClientImpl {
     {
         let http_client = self.http_client.clone();
         let params_clone = params.clone();
+        let params_clone2 = params.clone();
+        let infura_url = self.infura_url.clone();
         serde_json::to_string(params)
             .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => params))
             .and_then(|body| {
                 Request::builder()
-                .header("Content-Type", "application/json")
-                .method("POST")
-                .uri(self.infura_url.clone())
-                .body(Body::from(body.clone()))
-                .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
+                    .header("Content-Type", "application/json")
+                    .method("POST")
+                    .uri(self.infura_url.clone())
+                    .body(Body::from(body.clone()))
+                    .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
             }).into_future()
             .and_then(move |request| http_client.request(request))
             .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => params_clone)))
             .and_then(|bytes| {
                 let bytes_clone = bytes.clone();
                 String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
-            }).and_then(|string| {
-                serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
+            }).and_then(move |string| {
+                serde_json::from_str::<T>(&string)
+                    .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone(), params_clone2, infura_url))
             })
     }
 
