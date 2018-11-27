@@ -523,7 +523,7 @@ impl EthereumClient for EthereumClientImpl {
             "jsonrpc": "2.0",
             "id": 1,
             "method": "eth_call",
-            "params": [{"to": self.stq_contract_address, "data": data}]
+            "params": [{"to": self.stq_contract_address, "data": data}, "latest"]
         });
         Box::new(
             self.get_rpc_response::<BalanceResponse>(&params)
