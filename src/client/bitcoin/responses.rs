@@ -56,6 +56,17 @@ pub struct RpcRawTransactionResponse {
     pub result: RpcRawTransaction,
 }
 
+// Every raw transaction is converted to BlockchainTransaction
+// Coinbase tx however doesn't have any inputs, so it's hard to convert it
+// Basically it misses txid and vout fields
+// But when we convert a blockchain transactions for each vin we need to fetch a transactions that it refers to
+// These transactions maybe coinbase. But we don't need their vins, so we could ignore it
+// For that case we use this thing
+#[derive(Debug, Clone, Deserialize)]
+pub struct RpcRawTransactionMaybeCoinbaseVinsResponse {
+    pub result: RpcRawTransactionWithMaybeCoinbaseVins,
+}
+
 #[derive(Debug, Clone, Deserialize)]
 pub struct RpcBalanceResponse {
     #[serde(deserialize_with = "de_bitcoin_decimal")]
@@ -76,11 +87,27 @@ pub struct RpcRawTransaction {
 }
 
 #[derive(Debug, Clone, Deserialize)]
+pub struct RpcRawTransactionWithMaybeCoinbaseVins {
+    pub txid: String,
+    pub vin: Vec<MaybeCoinbaseVin>,
+    pub vout: Vec<Vout>,
+    pub confirmations: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct Vin {
     // utxo transaction
     pub txid: String,
     // utxo index
     pub vout: usize,
+}
+
+#[derive(Debug, Clone, Deserialize)]
+pub struct MaybeCoinbaseVin {
+    // utxo transaction
+    pub txid: Option<String>,
+    // utxo index
+    pub vout: Option<usize>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

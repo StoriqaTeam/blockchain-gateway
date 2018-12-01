@@ -147,7 +147,11 @@ impl BitcoinClientImpl {
         self.get_rpc_response::<RpcBlockResponse>(&params).map(|r| r.result)
     }
 
-    fn rpc_tx_to_tx(tx: RpcRawTransaction, in_txs: Vec<RpcRawTransaction>, block_number: u64) -> Result<BlockchainTransaction, Error> {
+    fn rpc_tx_to_tx(
+        tx: RpcRawTransaction,
+        in_txs: Vec<RpcRawTransactionWithMaybeCoinbaseVins>,
+        block_number: u64,
+    ) -> Result<BlockchainTransaction, Error> {
         let RpcRawTransaction {
             txid: hash,
             vin: vins,
@@ -156,7 +160,8 @@ impl BitcoinClientImpl {
         } = tx;
         let hash_clone = hash.clone();
         let hash_clone2 = hash.clone();
-        let in_txs_hash: HashMap<String, RpcRawTransaction> = in_txs.into_iter().map(|tx| (tx.txid.clone(), tx)).collect();
+        let in_txs_hash: HashMap<String, RpcRawTransactionWithMaybeCoinbaseVins> =
+            in_txs.into_iter().map(|tx| (tx.txid.clone(), tx)).collect();
         let from: Result<Vec<BlockchainTransactionEntry>, Error> = vins
             .iter()
             .map(|vin| {
@@ -251,7 +256,9 @@ impl BitcoinClient for BitcoinClientImpl {
                             "method": "getrawtransaction",
                             "params": [vin.txid, true]
                         });
-                            self_clone.get_rpc_response::<RpcRawTransactionResponse>(&params).map(|r| r.result)
+                            self_clone
+                                .get_rpc_response::<RpcRawTransactionMaybeCoinbaseVinsResponse>(&params)
+                                .map(|r| r.result)
                         }).collect();
                     future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
                 }).and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number)),
