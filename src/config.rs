@@ -55,6 +55,7 @@ pub struct Client {
 
 #[derive(Debug, Deserialize, Clone)]
 pub struct Poller {
+    pub enabled: bool,
     pub bitcoin_interval_secs: usize,
     pub bitcoin_number_of_tracked_confirmations: usize,
     pub ethereum_interval_secs: usize,

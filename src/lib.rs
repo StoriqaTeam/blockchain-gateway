@@ -91,41 +91,43 @@ pub fn start_server() {
     ));
 
     let config_clone = config.clone();
-    thread::spawn(move || {
-        let mut core = tokio_core::reactor::Core::new().unwrap();
-        debug!("Started creating rabbit connection pool");
-        let config = config_clone.clone();
-        let f = create_transactions_publisher(&config_clone)
-            .map(|publisher| {
-                let publisher = Arc::new(publisher);
-                let ethereum_poller = EthereumPollerService::new(
-                    Duration::from_secs(config.poller.ethereum_interval_secs as u64),
-                    ethereum_client.clone(),
-                    publisher.clone(),
-                    config.poller.ethereum_number_of_tracked_confirmations,
-                );
-                let storiqa_poller = StoriqaPollerService::new(
-                    Duration::from_secs(config.poller.storiqa_interval_secs as u64),
-                    ethereum_client.clone(),
-                    publisher.clone(),
-                    config.poller.storiqa_number_of_tracked_confirmations,
-                );
-                let bitcoin_poller = BitcoinPollerService::new(
-                    Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
-                    bitcoin_client.clone(),
-                    publisher.clone(),
-                    config.poller.bitcoin_number_of_tracked_confirmations,
-                );
+    if config.poller.enabled {
+        thread::spawn(move || {
+            let mut core = tokio_core::reactor::Core::new().unwrap();
+            debug!("Started creating rabbit connection pool");
+            let config = config_clone.clone();
+            let f = create_transactions_publisher(&config_clone)
+                .map(|publisher| {
+                    let publisher = Arc::new(publisher);
+                    let ethereum_poller = EthereumPollerService::new(
+                        Duration::from_secs(config.poller.ethereum_interval_secs as u64),
+                        ethereum_client.clone(),
+                        publisher.clone(),
+                        config.poller.ethereum_number_of_tracked_confirmations,
+                    );
+                    let storiqa_poller = StoriqaPollerService::new(
+                        Duration::from_secs(config.poller.storiqa_interval_secs as u64),
+                        ethereum_client.clone(),
+                        publisher.clone(),
+                        config.poller.storiqa_number_of_tracked_confirmations,
+                    );
+                    let bitcoin_poller = BitcoinPollerService::new(
+                        Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
+                        bitcoin_client.clone(),
+                        publisher.clone(),
+                        config.poller.bitcoin_number_of_tracked_confirmations,
+                    );
 
-                bitcoin_poller.start();
-                ethereum_poller.start();
-                storiqa_poller.start();
-            }).map_err(|e| {
-                log_error(&e);
-            });
-        let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
-        warn!("Poller process exited!");
-    });
+                    bitcoin_poller.start();
+                    ethereum_poller.start();
+                    storiqa_poller.start();
+                }).map_err(|e| {
+                    log_error(&e);
+                });
+            let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
+            warn!("Poller process exited!");
+        });
+    }
 
     api::start_server(config);
 }

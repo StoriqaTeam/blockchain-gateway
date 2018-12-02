@@ -13,6 +13,7 @@ stq_approval_topic = "0x8c5be1e5ebec7d5bd14f71427d1e84f3dd0314c0f7b2291e5b200ac8
 stq_balance_method = "0x70a08231"
 
 [poller]
+enabled = true
 bitcoin_interval_secs = 60
 bitcoin_number_of_tracked_confirmations = 4
 ethereum_interval_secs = 10
