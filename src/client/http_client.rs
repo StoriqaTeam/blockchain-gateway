@@ -73,17 +73,23 @@ impl HttpClient for HttpClientImpl {
 
         Box::new(fut.and_then(|resp| {
             if resp.status().is_client_error() || resp.status().is_server_error() {
-                match resp.status().as_u16() {
-                    400 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadRequest)),
-                    401 => Err(ectx!(err ErrorSource::Server, ErrorKind::Unauthorized)),
-                    404 => Err(ectx!(err ErrorSource::Server, ErrorKind::NotFound)),
-                    500 => Err(ectx!(err ErrorSource::Server, ErrorKind::InternalServer)),
-                    502 => Err(ectx!(err ErrorSource::Server, ErrorKind::BadGateway)),
-                    504 => Err(ectx!(err ErrorSource::Server, ErrorKind::GatewayTimeout)),
-                    _ => Err(ectx!(err ErrorSource::Server, ErrorKind::UnknownServerError)),
-                }
+                let kind = match resp.status().as_u16() {
+                    400 => ErrorKind::BadRequest,
+                    401 => ErrorKind::Unauthorized,
+                    404 => ErrorKind::NotFound,
+                    500 => ErrorKind::InternalServer,
+                    502 => ErrorKind::BadGateway,
+                    504 => ErrorKind::GatewayTimeout,
+                    _ => ErrorKind::UnknownServerError,
+                };
+                Either::A(
+                    read_body(resp.into_body())
+                        .map(|bytes| String::from_utf8(bytes).unwrap_or("Failed to read response body".to_string()))
+                        .or_else(|_| Ok("Failed to read response body".to_string()))
+                        .and_then(move |body_message| Err(ectx!(err ErrorSource::Server, kind => body_message))),
+                )
             } else {
-                Ok(resp)
+                Either::B(Ok(resp).into_future())
             }
         }))
     }
