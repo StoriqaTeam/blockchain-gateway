@@ -98,7 +98,7 @@ impl Config {
         s.merge(File::with_name(&format!("config/{}", env)).required(false))?;
         s.merge(File::with_name("config/secret.toml").required(false))?;
 
-        let mut env_conf = Environment::with_prefix("STQ_PAYMENTS");
+        let env_conf = Environment::with_prefix("STQ_PAYMENTS");
         let env_conf = env_conf.separator("_");
         s.merge(env_conf)?;
         s.try_into()

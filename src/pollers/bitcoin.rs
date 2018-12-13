@@ -48,13 +48,14 @@ impl BitcoinPollerService {
     ) -> impl Future<Item = (), Error = Error> + Send {
         let publisher = self.publisher.clone();
         self.client
-            .last_transactions(start_block_hash, blocks_count)
-            .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal))
+            .last_transactions(start_block_hash.clone(), blocks_count.clone())
+            .map_err(ectx!(ErrorSource::Client, ErrorKind::Internal => start_block_hash, blocks_count))
             .and_then(move |tx| {
                 publisher
-                    .publish(vec![tx])
-                    .map_err(ectx!(ErrorSource::Publisher, ErrorKind::Internal))
-            }).for_each(|_| Ok(()))
+                    .publish(vec![tx.clone()])
+                    .map_err(ectx!(ErrorSource::Publisher, ErrorKind::Internal => tx))
+            })
+            .for_each(|_| Ok(()))
     }
 
     fn tick(&self) {
