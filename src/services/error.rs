@@ -60,7 +60,7 @@ impl From<ClientErrorKind> for ErrorKind {
             ClientErrorKind::Internal => ErrorKind::Internal,
             ClientErrorKind::InternalServer => ErrorKind::Internal,
             ClientErrorKind::NotFound => ErrorKind::NotFound,
-            ClientErrorKind::Unauthorized => ErrorKind::Unauthorized,
+            ClientErrorKind::Unauthorized => ErrorKind::Internal,
             ClientErrorKind::UnknownServerError => ErrorKind::Internal,
             ClientErrorKind::UnprocessableEntity => ErrorKind::MalformedInput,
             ClientErrorKind::NoReceipt => ErrorKind::Internal,
