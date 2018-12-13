@@ -84,15 +84,15 @@ impl BitcoinClientImpl {
                     .uri(self.bitcoin_rpc_url.clone())
                     .body(Body::from(body.clone()))
                     .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
-            }).into_future()
+            })
+            .into_future()
             .and_then(move |request| http_client.request(request))
             .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => params_clone)))
             .and_then(|bytes| {
                 let bytes_clone = bytes.clone();
                 String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
-            }).and_then(|string| {
-                serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
             })
+            .and_then(|string| serde_json::from_str::<T>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone())))
     }
 
     fn block_transactions(&self, block: Block) -> impl Stream<Item = BlockchainTransaction, Error = Error> {
@@ -110,7 +110,8 @@ impl BitcoinClientImpl {
                 let self_clone = self_clone.clone();
                 let fs = hashes.into_iter().map(move |hash| self_clone.get_transaction(hash, block_number));
                 future::join_all(fs)
-            }).map(|x| stream::iter_ok(x))
+            })
+            .map(|x| stream::iter_ok(x))
             .flatten()
     }
 
@@ -179,7 +180,8 @@ impl BitcoinClientImpl {
                     address: out_out.script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value,
                 })
-            }).collect();
+            })
+            .collect();
         let from = from?;
         let to: Vec<_> = vouts
             .iter()
@@ -190,7 +192,8 @@ impl BitcoinClientImpl {
                     address: script_pub_key.addresses.get(0).cloned().unwrap_or("0".to_string()),
                     value: *value,
                 }
-            }).collect();
+            })
+            .collect();
         let from_sum = from.iter().fold(Some(Amount::new(0)), |acc, item| {
             acc.and_then(|acc_val| acc_val.checked_add(item.value))
         });
@@ -200,7 +203,8 @@ impl BitcoinClientImpl {
         let fee = match (from_sum, to_sum) {
             (Some(fs), Some(ts)) => fs.checked_sub(ts),
             _ => None,
-        }.ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2, from_sum, to_sum))?;
+        }
+        .ok_or(ectx!(try err ErrorContext::Overflow, ErrorKind::Internal => hash_clone2, from_sum, to_sum))?;
         let from: Vec<_> = from
             .into_iter()
             .filter_map(|entry| match entry {
@@ -209,7 +213,8 @@ impl BitcoinClientImpl {
                 // so that from_sum and to_sum is correct
                 ref x if x.address == "0" => None,
                 x @ _ => Some(x),
-            }).map(|from| from.address)
+            })
+            .map(|from| from.address)
             .collect();
         Ok(BlockchainTransaction {
             hash,
@@ -251,17 +256,19 @@ impl BitcoinClient for BitcoinClientImpl {
                         .iter()
                         .map(move |vin| {
                             let params = json!({
-                            "jsonrpc": "2",
-                            "id": "1",
-                            "method": "getrawtransaction",
-                            "params": [vin.txid, true]
-                        });
+                                "jsonrpc": "2",
+                                "id": "1",
+                                "method": "getrawtransaction",
+                                "params": [vin.txid, true]
+                            });
                             self_clone
                                 .get_rpc_response::<RpcRawTransactionMaybeCoinbaseVinsResponse>(&params)
                                 .map(|r| r.result)
-                        }).collect();
+                        })
+                        .collect();
                     future::join_all(in_transaction_fs).map(move |in_transactions| (resp, in_transactions))
-                }).and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number)),
+                })
+                .and_then(move |(tx_resp, in_txs_resp)| BitcoinClientImpl::rpc_tx_to_tx(tx_resp.result, in_txs_resp, block_number)),
         )
     }
 
@@ -311,9 +318,11 @@ impl BitcoinClient for BitcoinClientImpl {
                 .and_then(|bytes| {
                     let bytes_clone = bytes.clone();
                     String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
-                }).and_then(|string| {
+                })
+                .and_then(|string| {
                     serde_json::from_str::<UtxosResponse>(&string).map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone()))
-                }).map(|resp| resp.unspent_outputs.into_iter().map(From::from).collect()),
+                })
+                .map(|resp| resp.unspent_outputs.into_iter().map(From::from).collect()),
         )
     }
 

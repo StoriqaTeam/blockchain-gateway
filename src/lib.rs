@@ -121,7 +121,8 @@ pub fn start_server() {
                     bitcoin_poller.start();
                     ethereum_poller.start();
                     storiqa_poller.start();
-                }).map_err(|e| {
+                })
+                .map_err(|e| {
                     log_error(&e);
                 });
             let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
@@ -141,7 +142,8 @@ pub fn get_btc_blocks(hash: Option<String>, number: u64) {
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -157,7 +159,8 @@ pub fn get_btc_transaction(hash: &str) {
         .get_transaction(hash.to_string(), 0)
         .map(|tx| {
             println!("{:#?}", tx);
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -174,7 +177,8 @@ pub fn get_btc_transactions(hash: Option<String>, number: u64) {
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -188,7 +192,8 @@ pub fn publish_btc_transactions(hash: Option<String>, number: u64) {
     let f = create_transactions_publisher(&config)
         .map_err(|e| {
             log_error(&e);
-        }).and_then(move |publisher| {
+        })
+        .and_then(move |publisher| {
             let btc_poller = BitcoinPollerService::new(
                 Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
                 bitcoin_client,
@@ -211,7 +216,8 @@ pub fn get_eth_transaction(hash: &str) {
         .get_eth_transaction(hash.to_string())
         .map(|tx| {
             println!("{:#?}", tx);
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -228,7 +234,8 @@ pub fn get_eth_transactions(hash: Option<String>, number: u64) {
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -242,7 +249,8 @@ pub fn publish_eth_transactions(hash: Option<String>, number: u64) {
     let f = create_transactions_publisher(&config)
         .map_err(|e| {
             log_error(&e);
-        }).and_then(move |publisher| {
+        })
+        .and_then(move |publisher| {
             let eth_poller = EthereumPollerService::new(
                 Duration::from_secs(config.poller.ethereum_interval_secs as u64),
                 ethereum_client,
@@ -266,7 +274,8 @@ pub fn get_stq_transaction(hash: &str) {
         .for_each(|tx| {
             println!("{:#?}", tx);
             Ok(())
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -283,7 +292,8 @@ pub fn get_stq_transactions(hash: Option<String>, number: u64) {
         .for_each(|block| {
             println!("{:#?}", block);
             Ok(())
-        }).map_err(|e| {
+        })
+        .map_err(|e| {
             log_error(&e);
         });
 
@@ -297,7 +307,8 @@ pub fn publish_stq_transactions(hash: Option<String>, number: u64) {
     let f = create_transactions_publisher(&config)
         .map_err(|e| {
             log_error(&e);
-        }).and_then(move |publisher| {
+        })
+        .and_then(move |publisher| {
             let stq_poller = StoriqaPollerService::new(
                 Duration::from_secs(config.poller.storiqa_interval_secs as u64),
                 storiqa_client,

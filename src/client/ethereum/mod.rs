@@ -111,7 +111,8 @@ impl EthereumClientImpl {
                         .into_iter()
                         .map(|tx_resp| EthereumClientImpl::eth_response_to_partial_tx(tx_resp.clone())),
                 )
-            }).flatten()
+            })
+            .flatten()
             .filter(|tx| tx.to[0].value.inner() > 0)
     }
 
@@ -139,7 +140,8 @@ impl EthereumClientImpl {
                 // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
                 ErrorKind::NoReceipt => Ok(None),
                 _ => Err(e),
-            }).filter_map(|maybe_item| maybe_item)
+            })
+            .filter_map(|maybe_item| maybe_item)
     }
 
     fn get_eth_partial_transaction(&self, hash: String) -> impl Future<Item = PartialBlockchainTransaction, Error = Error> + Send {
@@ -226,7 +228,8 @@ impl EthereumClientImpl {
                 self_clone
                     .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                     .map(|tx| (tx_resp, tx.gas_price))
-            }).and_then(move |(tx_resp, gas_price)| self_clone2.stq_response_to_partial_tx(tx_resp, gas_price))
+            })
+            .and_then(move |(tx_resp, gas_price)| self_clone2.stq_response_to_partial_tx(tx_resp, gas_price))
     }
 
     fn last_stq_transactions_with_current_block(
@@ -251,7 +254,8 @@ impl EthereumClientImpl {
                 // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
                 ErrorKind::NoReceipt => Ok(None),
                 _ => Err(e),
-            }).filter_map(|maybe_item| maybe_item)
+            })
+            .filter_map(|maybe_item| maybe_item)
     }
 
     fn get_stq_transactions_with_current_block(
@@ -297,7 +301,8 @@ impl EthereumClientImpl {
                         .get_rpc_response::<StqResponse>(&params_approval)
                         .join(self_clone3.get_rpc_response::<StqResponse>(&params_transfer))
                         .map(|(approval_resp, transfer_resp)| approval_resp.concat(transfer_resp))
-                }).into_stream()
+                })
+                .into_stream()
                 .map(|stq_resp| stream::iter_ok(stq_resp.result.into_iter()))
                 .flatten()
                 .filter(move |resp_item| resp_item.transaction_hash[2..] == hash_clone[..])
@@ -305,14 +310,16 @@ impl EthereumClientImpl {
                     self_clone
                         .get_eth_partial_transaction(tx_resp.transaction_hash[2..].to_string())
                         .map(|tx| (tx_resp, tx.gas_price))
-                }).and_then(move |(resp, gas_price)| self_clone4.stq_response_to_partial_tx(resp, gas_price))
+                })
+                .and_then(move |(resp, gas_price)| self_clone4.stq_response_to_partial_tx(resp, gas_price))
                 .and_then(move |partial_tx| self_clone2.partial_tx_to_tx(&partial_tx, current_block))
                 .map(Some)
                 .or_else(|e| match e.kind() {
                     // recover from NoReceipt - since it's ok to fetch it later, with enough confirmations
                     ErrorKind::NoReceipt => Ok(None),
                     _ => Err(e),
-                }).filter_map(|maybe_item| maybe_item),
+                })
+                .filter_map(|maybe_item| maybe_item),
         )
     }
 
@@ -336,7 +343,8 @@ impl EthereumClientImpl {
             .map(|s| {
                 let slice = &s[(s.len() - ADDRESS_LENGTH)..];
                 slice.to_string()
-            }).ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
+            })
+            .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let to = log
             .topics
             .get(2)
@@ -344,7 +352,8 @@ impl EthereumClientImpl {
             .map(|s| {
                 let slice = &s[(s.len() - ADDRESS_LENGTH)..];
                 slice.to_string()
-            }).ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
+            })
+            .ok_or(ectx!(try err ErrorContext::Topics, ErrorKind::Internal))?;
         let block_number = EthereumClientImpl::parse_hex(log.block_number).map(|x| x as u64)?;
         let value = EthereumClientImpl::parse_hex(log.data).map(Amount::new)?;
         let log_index = EthereumClientImpl::parse_hex(log.transaction_log_index)?;
@@ -413,13 +422,15 @@ impl EthereumClientImpl {
                     .uri(self.infura_url.clone())
                     .body(Body::from(body.clone()))
                     .map_err(ectx!(ErrorSource::Hyper, ErrorKind::Internal => body))
-            }).into_future()
+            })
+            .into_future()
             .and_then(move |request| http_client.request(request))
             .and_then(|resp| read_body(resp.into_body()).map_err(ectx!(ErrorKind::Internal => params_clone)))
             .and_then(|bytes| {
                 let bytes_clone = bytes.clone();
                 String::from_utf8(bytes).map_err(ectx!(ErrorContext::UTF8, ErrorKind::Internal => bytes_clone))
-            }).and_then(move |string| {
+            })
+            .and_then(move |string| {
                 serde_json::from_str::<T>(&string)
                     .map_err(ectx!(ErrorContext::Json, ErrorKind::Internal => string.clone(), params_clone2, infura_url))
             })
@@ -498,7 +509,8 @@ impl EthereumClient for EthereumClientImpl {
                 .map(move |current_block| {
                     let hash = start_block_hash.clone();
                     self_clone.last_eth_transactions_with_current_block(hash, blocks_count, current_block)
-                }).flatten(),
+                })
+                .flatten(),
         )
     }
 
@@ -543,7 +555,8 @@ impl EthereumClient for EthereumClientImpl {
                 .map(move |current_block| {
                     let hash = start_block_hash.clone();
                     self_clone.last_stq_transactions_with_current_block(hash, blocks_count, current_block)
-                }).flatten(),
+                })
+                .flatten(),
         )
     }
 
@@ -555,7 +568,8 @@ impl EthereumClient for EthereumClientImpl {
                 .map(move |current_block| {
                     let hash = hash.clone();
                     self_clone.get_stq_transactions_with_current_block(hash, current_block)
-                }).flatten(),
+                })
+                .flatten(),
         )
     }
 
@@ -608,7 +622,8 @@ pub fn hex_to_bytes(hex: String) -> Result<Vec<u8>, Error> {
             }
             let string = format!("{}{}", chunk[0], chunk[1]);
             u8::from_str_radix(&string, 16).map_err(ectx!(ErrorKind::BadRequest => hex))
-        }).collect()
+        })
+        .collect()
 }
 
 fn serialize_address(address: EthereumAddress) -> Result<String, Error> {
