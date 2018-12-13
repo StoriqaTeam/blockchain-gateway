@@ -64,7 +64,8 @@ impl TransactionPublisherImpl {
                         ..Default::default()
                     },
                     Default::default(),
-                ).map(|_| ()),
+                )
+                .map(|_| ()),
         );
         let f3: Box<Future<Item = (), Error = StdIoError>> = Box::new(
             channel
@@ -75,7 +76,8 @@ impl TransactionPublisherImpl {
                         ..Default::default()
                     },
                     Default::default(),
-                ).map(|_| ()),
+                )
+                .map(|_| ()),
         );
         let f4: Box<Future<Item = (), Error = StdIoError>> = Box::new(
             channel
@@ -86,7 +88,8 @@ impl TransactionPublisherImpl {
                         ..Default::default()
                     },
                     Default::default(),
-                ).map(|_| ()),
+                )
+                .map(|_| ()),
         );
         let f5: Box<Future<Item = (), Error = StdIoError>> = Box::new(channel.queue_bind(
             "btc_transactions",
@@ -156,7 +159,8 @@ impl TransactionPublisher for TransactionPublisherImpl {
                         )
                     });
                     future::join_all(futures).map_err(ectx!(ErrorSource::Lapin, ErrorKind::Internal))
-                }).map(|_| ()),
+                })
+                .map(|_| ()),
         )
     }
 }
