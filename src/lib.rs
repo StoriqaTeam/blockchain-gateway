@@ -72,16 +72,16 @@ pub fn start_server() {
     // Prepare logger
     logger::init(&config);
 
-    let http_client = Arc::new(HttpClientImpl::new(&config, log::Level::Trace));
+    let http_client = HttpClientImpl::new(&config, log::Level::Trace);
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
-        http_client.clone(),
+        Arc::new(http_client.clone()),
         config.mode.clone(),
         config.client.bitcoin_rpc_url.clone(),
         config.client.bitcoin_rpc_user.clone(),
         config.client.bitcoin_rpc_password.clone(),
     ));
     let ethereum_client = Arc::new(EthereumClientImpl::new(
-        http_client.clone(),
+        Arc::new(http_client.clone()),
         config.mode.clone(),
         config.client.infura_key.clone(),
         config.client.stq_contract_address.clone(),
