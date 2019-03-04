@@ -1,27 +1,24 @@
 use std::fmt::{self, Debug};
 use std::net::{SocketAddr, ToSocketAddrs};
 use std::sync::{Arc, Mutex};
-use std::thread;
 use std::time::Duration;
 
 use failure;
-use failure::Compat;
-use futures::future::Either;
-use lapin_async::connection::{ConnectingState, ConnectionState};
-use lapin_futures::channel::Channel;
+use lapin_futures::channel::{BasicQosOptions, Channel, ConfirmSelectOptions};
 use lapin_futures::client::{Client, ConnectionOptions, HeartbeatHandle};
+
 use prelude::*;
-use r2d2::{CustomizeConnection, ManageConnection, Pool};
 use regex::Regex;
 use tokio::net::tcp::TcpStream;
 use tokio::timer::timeout::Timeout;
-use tokio_core::reactor::Core;
 
 use super::error::*;
 use config::Config;
 use utils::log_error;
 
-pub type RabbitPool = Pool<RabbitConnectionManager>;
+// large limits may force RabbitMQ to close connection
+// (in case of socket buffer overflow)
+const CONSUMER_PREFETCH_COUNT: u16 = 10;
 
 #[derive(Clone)]
 pub struct RabbitConnectionManager {
@@ -52,29 +49,6 @@ impl Drop for RabbitHeartbeatHandle {
         if let Some(h) = handle {
             h.stop();
         }
-    }
-}
-
-#[derive(Debug, Clone)]
-pub struct ConnectionHooks;
-
-impl CustomizeConnection<Channel<TcpStream>, Compat<Error>> for ConnectionHooks {
-    #[allow(unused_variables)]
-    fn on_acquire(&self, conn: &mut Channel<TcpStream>) -> Result<(), Compat<Error>> {
-        trace!("Acquired rabbitmq channel");
-        Ok(())
-    }
-
-    #[allow(unused_variables)]
-    fn on_release(&self, conn: Channel<TcpStream>) {
-        trace!("Released rabbitmq channel");
-        thread::spawn(move || {
-            let res = conn.close(0, "Released from pool").wait();
-            if let Err(e) = res {
-                let e: Error = ectx!(err format_err!("{}", e), ErrorContext::ChannelClose, ErrorKind::Internal);
-                log_error(&e);
-            };
-        });
     }
 }
 
@@ -131,56 +105,6 @@ impl RabbitConnectionManager {
         Ok((options, address))
     }
 
-    fn repair_if_tcp_is_broken(&self) {
-        if self.is_broken_conn() {
-            let self_clone = self.clone();
-            thread::spawn(move || {
-                let _ = self_clone.repair_tcp().wait();
-            });
-        }
-    }
-
-    fn repair_tcp(&self) -> impl Future<Item = (), Error = Error> {
-        {
-            let cli = self.client.lock().unwrap();
-            let mut transport = cli.transport.lock().unwrap();
-            match transport.conn.state {
-                ConnectionState::Connecting(_) => {
-                    return Either::A(Err(ectx!(err ErrorContext::AlreadyConnecting, ErrorKind::Internal)).into_future())
-                }
-                _ => (),
-            };
-            info!("Resetting tcp connection to rabbit...");
-            // setting state to connecting, so that we don't reenter here
-            transport.conn.state = ConnectionState::Connecting(ConnectingState::Initial);
-        };
-
-        let self_client = self.client.clone();
-        let self_client2 = self.client.clone();
-        let self_hearbeat_handle = self.heartbeat_handle.clone();
-        Either::B(
-            RabbitConnectionManager::establish_client(self.address, self.connection_options.clone())
-                .map(move |(client, hearbeat_handle)| {
-                    {
-                        let mut self_client = self_client.lock().unwrap();
-                        *self_client = client;
-                    }
-                    {
-                        let mut self_hearbeat_handle = self_hearbeat_handle.lock().unwrap();
-                        *self_hearbeat_handle = hearbeat_handle;
-                    }
-                })
-                .map_err(move |e| {
-                    info!("Failed to reset tcp connection to rabbit.");
-                    log_error(&e);
-                    let cli = self_client2.lock().unwrap();
-                    let mut transport = cli.transport.lock().unwrap();
-                    transport.conn.state = ConnectionState::Error;
-                    e
-                }),
-        )
-    }
-
     fn establish_client(
         address: SocketAddr,
         options: ConnectionOptions,
@@ -198,80 +122,32 @@ impl RabbitConnectionManager {
             .and_then(move |(client, mut heartbeat)| {
                 info!("Connected to rabbit");
                 let handle = heartbeat.handle();
-                let client_clone = client.clone();
-                thread::spawn(move || {
-                    // Just using wait here doesn't work - says timer is stopped.
-                    // On the other hand we need to isolate this to a new thread,
-                    // i.e. need to use thread::spawn instead of tokio::spawn,
-                    // because r2d2 uses it's own thread pool witout tokio =>
-                    // good chance tokio::spawn won't work.
-                    let mut core = Core::new().unwrap();
-                    let f = heartbeat.map_err(move |e| {
-                        let e: Error = ectx!(err e, ErrorContext::Heartbeat, ErrorKind::Internal);
-                        log_error(&e);
-                        let mut transport = client_clone.transport.lock().unwrap();
-                        transport.conn.state = ConnectionState::Error;
-                    });
-                    let _ = core.run(f);
-                });
+                tokio::spawn(heartbeat.map_err(move |e| {
+                    let e: Error = ectx!(err e, ErrorContext::Heartbeat, ErrorKind::Internal);
+                    log_error(&e);
+                }));
                 handle
                     .ok_or(ectx!(err ErrorContext::HeartbeatHandle, ErrorKind::Internal))
                     .map(move |handle| (client, RabbitHeartbeatHandle::new(handle)))
             })
     }
 
-    fn is_broken_conn(&self) -> bool {
-        let cli = self.client.lock().unwrap();
-        let transport = cli.transport.lock().unwrap();
-        match transport.conn.state {
-            ConnectionState::Closing(_) | ConnectionState::Closed | ConnectionState::Error => true,
-            _ => false,
-        }
-    }
-
-    fn is_connecting_conn(&self) -> bool {
-        let cli = self.client.lock().unwrap();
-        let transport = cli.transport.lock().unwrap();
-        match transport.conn.state {
-            ConnectionState::Connecting(_) => true,
-            _ => false,
-        }
-    }
-}
-
-impl ManageConnection for RabbitConnectionManager {
-    type Connection = Channel<TcpStream>;
-    type Error = Compat<Error>;
-    fn connect(&self) -> Result<Self::Connection, Self::Error> {
+    pub fn get_channel(&self) -> Result<Channel<TcpStream>, Error> {
         trace!("Creating rabbit channel...");
-        self.repair_if_tcp_is_broken();
         let cli = self.client.lock().unwrap();
         let ch = cli
-            .create_channel()
+            .create_confirm_channel(ConfirmSelectOptions::default())
             .wait()
-            .map_err(ectx!(ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))
-            .map_err(|e: Error| e.compat());
+            .map_err(ectx!(try ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))?;
+        let _ = ch
+            .basic_qos(BasicQosOptions {
+                prefetch_count: CONSUMER_PREFETCH_COUNT,
+                global: true,
+                ..Default::default()
+            })
+            .wait()
+            .map_err(ectx!(try ErrorSource::Io, ErrorContext::RabbitChannel, ErrorKind::Internal))?;
         trace!("Rabbit channel is created");
-        ch
-    }
-    fn is_valid(&self, conn: &mut Self::Connection) -> Result<(), Self::Error> {
-        self.repair_if_tcp_is_broken();
-        if self.is_broken_conn() {
-            let e: Error = ectx!(err format_err!("Connection is broken"), ErrorKind::Internal);
-            return Err(e.compat());
-        }
-        if self.is_connecting_conn() {
-            let e: Error = ectx!(err format_err!("Connection is in process of connecting"), ErrorKind::Internal);
-            return Err(e.compat());
-        }
-        if !conn.is_connected() {
-            let e: Error = ectx!(err format_err!("Channel is not connected"), ErrorKind::Internal);
-            return Err(e.compat());
-        }
-        trace!("Channel is ok");
-        Ok(())
-    }
-    fn has_broken(&self, conn: &mut Self::Connection) -> bool {
-        self.is_valid(conn).is_err()
+        Ok(ch)
     }
 }

@@ -32,13 +32,13 @@ impl StoriqaPollerService {
         }
     }
 
-    pub fn start(&self) {
+    pub fn start(&self) -> impl Future<Item = (), Error = ()> {
         let self_clone = self.clone();
         let interval = Interval::new_interval(self.interval).for_each(move |_| {
             self_clone.tick();
             Ok(())
         });
-        tokio::spawn(interval.map_err(|_| ()));
+        interval.map_err(|_| ())
     }
 
     pub fn publish_transactions(
