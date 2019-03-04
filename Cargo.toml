@@ -20,8 +20,8 @@ gelf = { git = "https://github.com/StoriqaTeam/gelf-rust", rev = "b05956244f020b
 http_router = "0.1"
 hyper = "0.12"
 hyper-tls = "0.3"
-lapin-async = {version = "0.13", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
-lapin-futures = {version = "0.13.1", git = "https://github.com/StoriqaTeam/lapin", branch = "storiqa" }
+lapin-async = {version = "0.17", git = "https://github.com/StoriqaTeam/lapin", branch = "0.17.1" }
+lapin-futures = {version = "0.17", git = "https://github.com/StoriqaTeam/lapin", branch = "0.17.1" }
 log = { version = "0.4", features = ["std", "serde"] }
 r2d2 = "0.8"
 rand = "0.5"

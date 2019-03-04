@@ -51,7 +51,6 @@ mod services;
 mod utils;
 
 use std::sync::Arc;
-use std::thread;
 use std::time::Duration;
 
 use self::client::{BitcoinClient, BitcoinClientImpl, EthereumClient, EthereumClientImpl, HttpClientImpl};
@@ -59,7 +58,7 @@ use self::pollers::{BitcoinPollerService, EthereumPollerService, StoriqaPollerSe
 use self::utils::log_error;
 use config::Config;
 use prelude::*;
-use rabbit::{ConnectionHooks, Error as RabbitError, RabbitConnectionManager, TransactionPublisherImpl};
+use rabbit::{RabbitConnectionManager, TransactionPublisherImpl};
 
 pub fn print_config() {
     println!("Parsed config: {:?}", get_config());
@@ -71,6 +70,8 @@ pub fn start_server() {
     let _sentry = sentry_integration::init(config.sentry.as_ref());
     // Prepare logger
     logger::init(&config);
+
+    let mut rt = tokio::runtime::Runtime::new().unwrap();
 
     let http_client = HttpClientImpl::new(&config, log::Level::Trace);
     let bitcoin_client = Arc::new(BitcoinClientImpl::new(
@@ -90,47 +91,51 @@ pub fn start_server() {
         config.client.stq_balance_method.clone(),
     ));
 
-    let config_clone = config.clone();
+    debug!("Started creating rabbit connection pool");
+    let rabbit_connection_manager = rt
+        .block_on(RabbitConnectionManager::create(&config))
+        .map_err(|e| {
+            log_error(&e);
+        })
+        .expect("Can not create rabbit connection manager");
+    debug!("Finished creating rabbit connection manager");
     if config.poller.enabled {
-        thread::spawn(move || {
-            let mut core = tokio_core::reactor::Core::new().unwrap();
-            debug!("Started creating rabbit connection pool");
-            let config = config_clone.clone();
-            let f = create_transactions_publisher(&config_clone)
-                .map(|publisher| {
-                    let publisher = Arc::new(publisher);
-                    let ethereum_poller = EthereumPollerService::new(
-                        Duration::from_secs(config.poller.ethereum_interval_secs as u64),
-                        ethereum_client.clone(),
-                        publisher.clone(),
-                        config.poller.ethereum_number_of_tracked_confirmations,
-                    );
-                    let storiqa_poller = StoriqaPollerService::new(
-                        Duration::from_secs(config.poller.storiqa_interval_secs as u64),
-                        ethereum_client.clone(),
-                        publisher.clone(),
-                        config.poller.storiqa_number_of_tracked_confirmations,
-                    );
-                    let bitcoin_poller = BitcoinPollerService::new(
-                        Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
-                        bitcoin_client.clone(),
-                        publisher.clone(),
-                        config.poller.bitcoin_number_of_tracked_confirmations,
-                    );
+        let channel = Arc::new(rabbit_connection_manager.get_channel().expect("Can not get channel from pool"));
+        let publisher = rt
+            .block_on(TransactionPublisherImpl::init(channel))
+            .map_err(|e| {
+                log_error(&e);
+            })
+            .expect("Can not create rabbit connection manager");
 
-                    bitcoin_poller.start();
-                    ethereum_poller.start();
-                    storiqa_poller.start();
-                })
-                .map_err(|e| {
-                    log_error(&e);
-                });
-            let _ = core.run(f.and_then(|_| futures::future::empty::<(), ()>()));
-            warn!("Poller process exited!");
-        });
+        let publisher = Arc::new(publisher);
+        let ethereum_poller = EthereumPollerService::new(
+            Duration::from_secs(config.poller.ethereum_interval_secs as u64),
+            ethereum_client.clone(),
+            publisher.clone(),
+            config.poller.ethereum_number_of_tracked_confirmations,
+        );
+        let storiqa_poller = StoriqaPollerService::new(
+            Duration::from_secs(config.poller.storiqa_interval_secs as u64),
+            ethereum_client.clone(),
+            publisher.clone(),
+            config.poller.storiqa_number_of_tracked_confirmations,
+        );
+        let bitcoin_poller = BitcoinPollerService::new(
+            Duration::from_secs(config.poller.bitcoin_interval_secs as u64),
+            bitcoin_client.clone(),
+            publisher.clone(),
+            config.poller.bitcoin_number_of_tracked_confirmations,
+        );
+
+        rt.spawn(bitcoin_poller.start());
+        rt.spawn(ethereum_poller.start());
+        rt.spawn(storiqa_poller.start());
     }
 
-    api::start_server(config);
+    rt.spawn(api::start_server(config));
+
+    rt.shutdown_on_idle().wait().expect("Tokio runtime shutdown failed");
 }
 
 pub fn get_btc_blocks(hash: Option<String>, number: u64) {
@@ -189,7 +194,15 @@ pub fn get_btc_transactions(hash: Option<String>, number: u64) {
 pub fn publish_btc_transactions(hash: Option<String>, number: u64) {
     let config = get_config();
     let bitcoin_client = Arc::new(create_btc_client(&config));
-    let f = create_transactions_publisher(&config)
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let rabbit_connection_manager = core
+        .run(RabbitConnectionManager::create(&config))
+        .map_err(|e| {
+            log_error(&e);
+        })
+        .expect("Can not create rabbit connection manager");
+    let channel = Arc::new(rabbit_connection_manager.get_channel().expect("Can not get channel from pool"));
+    let f = TransactionPublisherImpl::init(channel)
         .map_err(|e| {
             log_error(&e);
         })
@@ -204,7 +217,6 @@ pub fn publish_btc_transactions(hash: Option<String>, number: u64) {
                 log_error(&e);
             })
         });
-    let mut core = ::tokio_core::reactor::Core::new().unwrap();
     let _ = core.run(f);
 }
 
@@ -246,7 +258,15 @@ pub fn get_eth_transactions(hash: Option<String>, number: u64) {
 pub fn publish_eth_transactions(hash: Option<String>, number: u64) {
     let config = get_config();
     let ethereum_client = Arc::new(create_eth_client(&config));
-    let f = create_transactions_publisher(&config)
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let rabbit_connection_manager = core
+        .run(RabbitConnectionManager::create(&config))
+        .map_err(|e| {
+            log_error(&e);
+        })
+        .expect("Can not create rabbit connection manager");
+    let channel = Arc::new(rabbit_connection_manager.get_channel().expect("Can not get channel from pool"));
+    let f = TransactionPublisherImpl::init(channel)
         .map_err(|e| {
             log_error(&e);
         })
@@ -261,7 +281,6 @@ pub fn publish_eth_transactions(hash: Option<String>, number: u64) {
                 log_error(&e);
             })
         });
-    let mut core = ::tokio_core::reactor::Core::new().unwrap();
     let _ = core.run(f);
 }
 
@@ -304,7 +323,15 @@ pub fn get_stq_transactions(hash: Option<String>, number: u64) {
 pub fn publish_stq_transactions(hash: Option<String>, number: u64) {
     let config = get_config();
     let storiqa_client = Arc::new(create_eth_client(&config));
-    let f = create_transactions_publisher(&config)
+    let mut core = ::tokio_core::reactor::Core::new().unwrap();
+    let rabbit_connection_manager = core
+        .run(RabbitConnectionManager::create(&config))
+        .map_err(|e| {
+            log_error(&e);
+        })
+        .expect("Can not create rabbit connection manager");
+    let channel = Arc::new(rabbit_connection_manager.get_channel().expect("Can not get channel from pool"));
+    let f = TransactionPublisherImpl::init(channel)
         .map_err(|e| {
             log_error(&e);
         })
@@ -319,22 +346,7 @@ pub fn publish_stq_transactions(hash: Option<String>, number: u64) {
                 log_error(&e);
             })
         });
-    let mut core = ::tokio_core::reactor::Core::new().unwrap();
     let _ = core.run(f);
-}
-
-fn create_transactions_publisher(config: &Config) -> impl Future<Item = TransactionPublisherImpl, Error = RabbitError> {
-    let config_clone = config.clone();
-    let rabbit_thread_pool = futures_cpupool::CpuPool::new(config_clone.rabbit.thread_pool_size);
-    RabbitConnectionManager::create(&config).and_then(move |rabbit_connection_manager| {
-        let rabbit_connection_pool = r2d2::Pool::builder()
-            .max_size(config_clone.rabbit.connection_pool_size as u32)
-            .connection_customizer(Box::new(ConnectionHooks))
-            .build(rabbit_connection_manager)
-            .expect("Cannot build rabbit connection pool");
-        let publisher = TransactionPublisherImpl::new(rabbit_connection_pool, rabbit_thread_pool);
-        publisher.init().map(|_| publisher)
-    })
 }
 
 fn create_btc_client(config: &Config) -> BitcoinClientImpl {
